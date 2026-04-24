@@ -1,0 +1,27 @@
+[project]
+name = "inbound-sdr-copilot-backend"
+version = "0.1.0"
+description = "FastAPI backend for the Inbound SDR Copilot lead scoring MVP."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "email-validator>=2.3.0",
+    "fastapi>=0.136.1",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.14.0",
+    "python-dotenv>=1.2.2",
+    "uvicorn[standard]>=0.46.0",
+]
+
+[project.scripts]
+dev = "app.cli:main"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
