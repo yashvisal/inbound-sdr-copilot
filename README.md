@@ -183,11 +183,11 @@ ICP -> Market Fit -> Company Fit -> Timing -> Final Score -> Sales Outputs
 Final score is out of 100 points:
 
 
-| Category         | Points | Purpose                                                                |
-| ---------------- | ------ | ---------------------------------------------------------------------- |
-| Market Fit       | 45     | Estimate leasing demand at both city and neighborhood level             |
-| Company / Property Fit | 45 | Estimate whether the company and submitted property match EliseAI's ICP |
-| Timing / Why Now | 10     | Estimate whether there is a current reason to prioritize outreach      |
+| Category               | Points | Purpose                                                                 |
+| ---------------------- | ------ | ----------------------------------------------------------------------- |
+| Market Fit             | 45     | Estimate leasing demand at both city and neighborhood level             |
+| Company / Property Fit | 45     | Estimate whether the company and submitted property match EliseAI's ICP |
+| Timing / Why Now       | 10     | Estimate whether there is a current reason to prioritize outreach       |
 
 
 Market Fit and Company / Property Fit carry equal weight because the lead opportunity is the combination of the property location and the buyer fit. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
@@ -196,24 +196,32 @@ Market Fit and Company / Property Fit carry equal weight because the lead opport
 
 Market Fit estimates whether the property is located in a strong rental market and a locally attractive neighborhood. It intentionally combines macro city-level momentum with address-sensitive neighborhood signals.
 
-### City / Market Momentum: 12 Points
+### City / Market Attractiveness: 12 Points
 
-Purpose: estimate broad market scale and growth.
+Purpose: estimate broad market scale, rental market value, and light growth upside.
 
 Sources:
 
 - Data USA
+- ACS 5-year place-level data
 
 Signals:
 
 - city/place population
+- city/place median gross rent
 - multi-year population growth
 
 Reasoning:
 
-Macro growth matters because SDRs should care whether the broader market is expanding. A strong neighborhood in a stagnant market can still be useful, but high-growth markets usually create more leasing activity and operational pressure.
+The macro layer should capture whether the property sits in an economically valuable rental market, not just whether the city population is growing. Median gross rent is treated as a rental market value signal, while renter share remains the main leasing-volume signal. Growth is kept as a light upside signal so mature high-value markets are not unfairly penalized for flat or slightly declining population.
 
-### Neighborhood Rental Demand: 12 Points
+Scoring:
+
+- population scale: 4 points
+- median gross rent: 5 points
+- growth momentum: 3 points
+
+### Neighborhood Rental Demand: 10 Points
 
 Purpose: estimate local rental-market relevance near the submitted property.
 
@@ -225,11 +233,11 @@ Sources:
 Signals:
 
 - renter share
-- local housing units or occupied rental units
+- local housing units as a stability signal, not as a direct scoring input
 
 Reasoning:
 
-This is the core address-sensitive market signal. A property in a renter-heavy tract or block group is more likely to sit in an area with leasing activity, resident turnover, and property operations complexity.
+This is the core address-sensitive market signal. A property in a renter-heavy tract or block group is more likely to sit in an area with leasing activity, resident turnover, and property operations complexity. To avoid block-group artifacts, renter share is blended with tract-level renter share and capped before scoring. If the block group has a very small housing base, tract-level values receive more influence.
 
 ### Neighborhood Economic Strength: 8 Points
 
@@ -242,7 +250,6 @@ Sources:
 Signals:
 
 - median household income
-- optional median gross rent later
 
 Reasoning:
 
@@ -262,9 +269,16 @@ Signals:
 
 Reasoning:
 
-Vacancy provides a rough indication of leasing pressure. Lower vacancy can suggest strong demand; higher vacancy may suggest a need for better leasing operations but also weaker demand. This signal gets moderate weight because interpretation can vary by market.
+Vacancy provides a rough indication of leasing pressure. It is scored in soft bands rather than linearly:
 
-### Access / Urban Proxy: 7 Points
+- below 5%: strong positive
+- 5-15%: neutral or healthy
+- 15-25%: mild tempering
+- above 25%: moderate tempering
+
+This avoids over-penalizing markets where vacancy may reflect new supply, churn, seasonality, student housing, or ACS small-area noise.
+
+### Access / Urban Proxy: 9 Points
 
 Purpose: approximate walkability, transit access, and urban density without relying on paid or brittle external APIs.
 
@@ -282,6 +296,14 @@ Reasoning:
 
 Walkability and urban access are relevant to rental demand, but Walk Score and OSM-style integrations add access and reliability risk. ACS commute and vehicle-access variables provide free, explainable proxies for urban rental-market characteristics.
 
+### Edge-Case Guards
+
+Market Fit includes a few lightweight guards to keep ACS small-area data from distorting otherwise strong markets:
+
+- If neighborhood income is extremely low in a dense urban tract, income is treated as neutral instead of a hard negative.
+- If renter share is low and vacancy is high, a small dampener is applied because the tract may be more commercial or mixed-use than residential.
+- High vacancy is softened because it can reflect supply, churn, or lease-up rather than weak demand.
+
 ### Market Output
 
 The system should return:
@@ -293,7 +315,7 @@ The system should return:
 
 Example reasons:
 
-- City population and growth indicate healthy market momentum.
+- City population, median gross rent, and growth indicate market attractiveness.
 - Tract-level renter share indicates strong local rental demand.
 - Transit and no-vehicle household signals suggest urban access.
 
@@ -513,12 +535,14 @@ Resolution order:
 
 Confidence levels:
 
-| Confidence | Meaning | Product behavior |
-| --- | --- | --- |
-| High | Census matched the submitted address directly. | Use tract/block group without warning. |
-| Medium | Direct Census match failed, but coordinate fallback found a plausible location and Census mapped it to tract/block group. | Use score as-is and show an informational note. |
-| Low | Only a normalized variant matched, or the matched address may differ materially from the input. | Use score as-is and show a stronger review note. |
-| Unresolved | No reliable tract/block-group geography was found. | Use city-level fallback if available and ask the user to confirm the address. |
+
+| Confidence | Meaning                                                                                                                   | Product behavior                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| High       | Census matched the submitted address directly.                                                                            | Use tract/block group without warning.                                        |
+| Medium     | Direct Census match failed, but coordinate fallback found a plausible location and Census mapped it to tract/block group. | Use score as-is and show an informational note.                               |
+| Low        | Only a normalized variant matched, or the matched address may differ materially from the input.                           | Use score as-is and show a stronger review note.                              |
+| Unresolved | No reliable tract/block-group geography was found.                                                                        | Use city-level fallback if available and ask the user to confirm the address. |
+
 
 The Market Fit score remains based on the resolved geography. Confidence does not penalize the score; it explains the assumption used to get the neighborhood data.
 
@@ -665,7 +689,7 @@ cd backend
 uv run python scripts/verify_market_fit.py
 ```
 
-The verifier defaults to `301 W 2nd St, Austin, TX` and should return populated market metrics from Data USA and address-level Census Geocoder plus ACS 5-year enrichment, including city population, growth, tract/block-group geography, median income, renter share, housing units, vacancy rate, access/urban proxy metrics, evidence snippets, and a Market Fit score.
+The verifier defaults to `301 W 2nd St, Austin, TX` and should return populated market metrics from Data USA and address-level Census Geocoder plus ACS 5-year enrichment, including city population, growth, city median gross rent, tract/block-group geography, median income, renter share, housing units, vacancy rate, access/urban proxy metrics, evidence snippets, and a Market Fit score.
 
 You can test another property address with:
 
