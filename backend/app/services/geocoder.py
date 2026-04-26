@@ -186,18 +186,33 @@ def _first(geographies: dict[str, Any], key: str) -> dict[str, Any] | None:
 
 def _full_address(address: str, city: str, state: str) -> str:
     normalized = address.strip()
-    if city.lower() in normalized.lower() and state.lower() in normalized.lower():
+    city_token = city.strip().lower()
+    state_token = state.strip().lower()
+    norm_lower = normalized.lower()
+    if not city_token or not state_token:
+        return ", ".join(part.strip() for part in [address, city, state] if part.strip())
+    city_pat = re.compile(rf"\b{re.escape(city_token)}\b")
+    state_pat = re.compile(rf"\b{re.escape(state_token)}\b")
+    if city_pat.search(norm_lower) and state_pat.search(norm_lower):
         return normalized
     return ", ".join(part.strip() for part in [address, city, state] if part.strip())
 
 
 def _variant_queries(input_address: str) -> list[str]:
-    variants = {
+    base = input_address.strip()
+    transformations = [
         re.sub(r"\b(\d+)(st|nd|rd|th)\b", r"\1", input_address, flags=re.IGNORECASE),
         input_address.replace(" Street", " St").replace(" street", " St"),
         input_address.replace(" St,", " Street,"),
         input_address.replace(" Road", " Rd").replace(" road", " Rd"),
         input_address.replace(" Rd,", " Road,"),
-    }
-    variants.discard(input_address)
-    return [variant for variant in variants if variant.strip()]
+    ]
+    seen: set[str] = set()
+    variants: list[str] = []
+    for candidate in transformations:
+        cleaned = candidate.strip()
+        if not cleaned or cleaned == base or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        variants.append(cleaned)
+    return variants

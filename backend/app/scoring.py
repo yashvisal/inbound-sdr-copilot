@@ -1,3 +1,5 @@
+import re
+
 from app.models import CompanyFitLabel, LeadInput, MarketMetrics, ScoreBreakdown, ScoreSection
 
 
@@ -143,9 +145,9 @@ def _score_neighborhood_rental_demand(metrics: MarketMetrics) -> tuple[int, list
         score += 2
         reasons.append("Lower renter share weakens the neighborhood rental-demand signal.")
 
-    if metrics.housing_units is not None and metrics.housing_units < 500:
+    if metrics.neighborhood_ratios_blended_with_tract:
         reasons.append(
-            "Small block-group housing base detected; neighborhood ratios are blended with tract data."
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise."
         )
 
     return min(score, 10), reasons
@@ -249,6 +251,7 @@ def _score_market_dampeners(metrics: MarketMetrics) -> tuple[int, list[str]]:
 
 def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel, bool]:
     normalized = company_text.lower()
+    tokens = set(re.findall(r"\b\w+\b", normalized))
     keyword_hits = [keyword for keyword in REAL_ESTATE_KEYWORDS if keyword in normalized]
     reasons: list[str] = []
 
@@ -269,9 +272,23 @@ def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel
         label = "Unclear fit"
         reasons.append("Company context was unavailable, so fit confidence is limited.")
 
-    scale_score = 9 if any(term in normalized for term in ["portfolio", "properties", "units", "locations"]) else 2
-    complexity_score = 8 if any(term in normalized for term in ["resident", "tenant", "tour", "maintenance", "renewal"]) else 2
-    activity_score = 6 if any(term in normalized for term in ["new", "expansion", "growth", "hiring", "acquisition"]) else 1
+    scale_score = (
+        9 if any(term in tokens for term in ["portfolio", "properties", "units", "locations"]) else 2
+    )
+    complexity_score = (
+        8
+        if any(term in tokens for term in ["resident", "tenant", "tour", "maintenance", "renewal"])
+        else 2
+    )
+    activity_phrase_hits = bool(
+        re.search(r"\bnew\s+expansion\b", normalized)
+        or re.search(r"\bnew\s+development\b", normalized)
+        or re.search(r"\bnew\s+acquisition\b", normalized)
+    )
+    activity_token_hits = any(
+        term in tokens for term in ["expansion", "growth", "hiring", "acquisition", "new"]
+    )
+    activity_score = 6 if activity_phrase_hits or activity_token_hits else 1
     property_relevance_score = 3
 
     if scale_score > 2:
@@ -320,25 +337,26 @@ def _confidence(
     timing_signals: list[str],
 ) -> str:
     signals = 0
-    signals += sum(
-        value is not None
-        for value in [
-            metrics.population,
-            metrics.population_growth_rate,
-            metrics.median_income,
-            metrics.renter_share,
-            metrics.housing_units,
-            metrics.vacancy_rate,
-            metrics.no_vehicle_household_share,
-            metrics.public_transit_commute_share,
-            metrics.walking_commute_share,
-        ]
-    )
+    metric_values = [
+        metrics.population,
+        metrics.population_growth_rate,
+        metrics.median_gross_rent,
+        metrics.median_income,
+        metrics.renter_share,
+        metrics.housing_units,
+        metrics.vacancy_rate,
+        metrics.no_vehicle_household_share,
+        metrics.public_transit_commute_share,
+        metrics.walking_commute_share,
+    ]
+    signals += sum(1 for value in metric_values if value is not None)
     signals += 1 if company_text.strip() else 0
     signals += 1 if timing_signals else 0
 
-    if signals >= 5:
+    total_signal_slots = len(metric_values) + 2
+    coverage = signals / float(total_signal_slots)
+    if coverage >= 0.7:
         return "High"
-    if signals >= 3:
+    if coverage >= 0.4:
         return "Medium"
     return "Low"

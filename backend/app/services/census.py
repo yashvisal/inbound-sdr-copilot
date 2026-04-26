@@ -77,19 +77,25 @@ async def fetch_neighborhood_market(
     tract-level ACS data.
     """
 
+    effective_block_group = block_group
     primary = await _fetch_acs_record(state_fips, county_fips, tract, block_group)
-    if primary is None:
+    if primary is None and block_group is not None:
         primary = await _fetch_acs_record(state_fips, county_fips, tract, None)
-        block_group = None
+        effective_block_group = None
     if primary is None:
         return None
 
     metrics = _metrics_from_record(primary)
-    tract_record = await _fetch_acs_record(state_fips, county_fips, tract, None)
-    tract_metrics = _metrics_from_record(tract_record) if tract_record else None
 
-    if block_group and tract_metrics:
+    if effective_block_group is not None:
+        tract_record = await _fetch_acs_record(state_fips, county_fips, tract, None)
+        tract_metrics = _metrics_from_record(tract_record) if tract_record else None
+    else:
+        tract_metrics = metrics
+
+    if effective_block_group and tract_metrics:
         block_weight, tract_weight = _neighborhood_weights(metrics.housing_units)
+        metrics.neighborhood_ratios_blended_with_tract = True
         metrics.renter_share = _blend_ratio(
             metrics.renter_share,
             tract_metrics.renter_share,
@@ -126,14 +132,14 @@ async def fetch_neighborhood_market(
     metrics.state_fips = state_fips
     metrics.county_fips = county_fips
     metrics.tract = tract
-    metrics.block_group = block_group
+    metrics.block_group = effective_block_group
 
     return CensusNeighborhoodMarket(
         name=metrics.geography_name,
         state_fips=state_fips,
         county_fips=county_fips,
         tract=tract,
-        block_group=block_group,
+        block_group=effective_block_group,
         metrics=metrics,
     )
 

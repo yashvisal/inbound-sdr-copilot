@@ -40,14 +40,24 @@ async def fetch_population_history(place_id: str) -> PopulationHistory:
 
 
 def _population_history_from_records(records: list[dict[str, Any]]) -> PopulationHistory:
-    parsed = sorted(
-        (
-            (int(record["Year"]), int(float(record["Population"])))
-            for record in records
-            if record.get("Year") is not None and record.get("Population") is not None
-        ),
-        reverse=True,
-    )
+    parsed: list[tuple[int, int]] = []
+    for record in records:
+        year_raw = record.get("Year")
+        population_raw = record.get("Population")
+        if year_raw is None or population_raw is None:
+            continue
+        if isinstance(year_raw, str) and not str(year_raw).strip():
+            continue
+        if isinstance(population_raw, str) and not str(population_raw).strip():
+            continue
+        try:
+            year = int(float(year_raw))
+            population = int(float(population_raw))
+        except (TypeError, ValueError):
+            continue
+        parsed.append((year, population))
+
+    parsed.sort(reverse=True)
     if not parsed:
         return PopulationHistory(None, None, None, None)
 

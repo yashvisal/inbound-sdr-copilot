@@ -56,6 +56,7 @@ class MarketMetrics(BaseModel):
     public_transit_commute_share: float | None = None
     walking_commute_share: float | None = None
     multifamily_share: float | None = None
+    neighborhood_ratios_blended_with_tract: bool = False
 
 
 class ScoreSection(BaseModel):

@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from app.models import AddressResolution, LeadInput, MarketMetrics, SourceSnippet
@@ -9,6 +10,8 @@ from app.services.census import (
 )
 from app.services.datausa import fetch_population_history
 from app.services.geocoder import geocode_address
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -38,7 +41,13 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
     missing_data: list[str] = []
     evidence: list[SourceSnippet] = []
 
-    geography = await geocode_address(lead.address, lead.city, lead.state)
+    geography = None
+    try:
+        geography = await geocode_address(lead.address, lead.city, lead.state)
+    except Exception:
+        logger.exception("Census geocoder request failed")
+        missing_data.append("Census Geocoder request failed; address was not resolved.")
+
     address_resolution = geography.resolution if geography else AddressResolution(
         confidence="Unresolved",
         method="failed",
@@ -50,15 +59,22 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
     )
     place = None
     if geography:
-        neighborhood = await fetch_neighborhood_market(
-            state_fips=geography.state_fips,
-            county_fips=geography.county_fips,
-            tract=geography.tract,
-            block_group=geography.block_group,
-        )
+        neighborhood = None
+        try:
+            neighborhood = await fetch_neighborhood_market(
+                state_fips=geography.state_fips,
+                county_fips=geography.county_fips,
+                tract=geography.tract,
+                block_group=geography.block_group,
+            )
+        except Exception:
+            logger.exception("Neighborhood ACS request failed")
+            missing_data.append("Neighborhood ACS request failed.")
+
         if neighborhood is None:
             metrics = MarketMetrics()
-            missing_data.append("Neighborhood ACS enrichment was unavailable.")
+            if "Neighborhood ACS request failed." not in missing_data:
+                missing_data.append("Neighborhood ACS enrichment was unavailable.")
         else:
             metrics = neighborhood.metrics
             evidence.append(
@@ -84,16 +100,27 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
                 )
     else:
         metrics = MarketMetrics()
-        missing_data.append("Census Geocoder could not resolve the property address.")
+        if not any("Census Geocoder request failed" in msg for msg in missing_data):
+            missing_data.append("Census Geocoder could not resolve the property address.")
 
     if geography and geography.place_geoid:
         datausa_place_id = f"16000US{geography.place_geoid}"
         place_name = geography.place_name or f"{lead.city}, {lead.state}"
-        place = await fetch_place_market_by_geoid(geography.place_geoid)
+        try:
+            place = await fetch_place_market_by_geoid(geography.place_geoid)
+        except Exception:
+            logger.exception("Place-level ACS fetch by GEOID failed")
+            place = None
+            missing_data.append("Place-level ACS request failed for resolved geography.")
     else:
         datausa_place_id = None
         place_name = f"{lead.city}, {lead.state}"
-        place = await fetch_place_market(lead.city, lead.state)
+        try:
+            place = await fetch_place_market(lead.city, lead.state)
+        except Exception:
+            logger.exception("Place-level ACS fetch failed for %s, %s", lead.city, lead.state)
+            place = None
+            missing_data.append(f"Place-level ACS request failed for {lead.city}, {lead.state}.")
 
     if place is None:
         if datausa_place_id is None:

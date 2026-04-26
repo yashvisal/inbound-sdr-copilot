@@ -171,6 +171,22 @@ def test_population_history_computes_growth_from_latest_window() -> None:
     assert round(history.growth_rate, 4) == 0.0223
 
 
+def test_population_history_skips_malformed_rows() -> None:
+    history = _population_history_from_records(
+        [
+            {"Year": 2024, "Population": 979539.0},
+            {"Year": "", "Population": 1},
+            {"Year": 2023, "Population": "N/A"},
+            {"Year": 2022, "Population": 958202.0},
+        ]
+    )
+
+    assert history.latest_population == 979_539
+    assert history.latest_year == 2024
+    assert history.earliest_year == 2022
+    assert history.growth_rate is not None
+
+
 def test_place_name_normalization_handles_census_suffixes() -> None:
     assert normalize_place_name("Austin city, Texas") == "austin"
     assert normalize_place_name("Austin") == "austin"
