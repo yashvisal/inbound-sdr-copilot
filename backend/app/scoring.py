@@ -285,9 +285,14 @@ def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel
         or re.search(r"\bnew\s+development\b", normalized)
         or re.search(r"\bnew\s+acquisition\b", normalized)
     )
-    activity_token_hits = any(
-        term in tokens for term in ["expansion", "growth", "hiring", "acquisition", "new"]
+    activity_core_tokens = ("expansion", "growth", "hiring", "acquisition", "development")
+    new_activity_adjacent = bool(
+        re.search(
+            r"\bnew\s+(expansion|development|acquisition|growth|hiring|hire|hires)\b",
+            normalized,
+        )
     )
+    activity_token_hits = any(term in tokens for term in activity_core_tokens) or new_activity_adjacent
     activity_score = 6 if activity_phrase_hits or activity_token_hits else 1
     property_relevance_score = 3
 

@@ -134,6 +134,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
         try:
             population_history = await fetch_population_history(datausa_place_id)
         except Exception:
+            logger.exception("Data USA population history fetch failed for %s", datausa_place_id)
             population_history = None
             missing_data.append("Data USA population history was unavailable.")
     else:

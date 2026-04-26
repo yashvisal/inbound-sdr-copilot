@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 import re
 from typing import Any
 
@@ -6,10 +7,21 @@ import httpx
 
 from app.models import AddressResolution
 
+logger = logging.getLogger(__name__)
+
 GEOCODER_URL = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
 COORDINATES_URL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "inbound-sdr-copilot/0.1"
+
+
+def _safe_float_coord(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 @dataclass(frozen=True)
@@ -32,15 +44,25 @@ async def geocode_address(address: str, city: str, state: str) -> AddressGeograp
     async with httpx.AsyncClient(timeout=20) as client:
         exact = await _census_address_match(client, input_address)
         if exact:
-            resolution = AddressResolution(
-                confidence="High",
-                method="census_exact",
-                input_address=input_address,
-                matched_address=exact.get("matchedAddress"),
-                latitude=float(exact.get("coordinates", {}).get("y")),
-                longitude=float(exact.get("coordinates", {}).get("x")),
-            )
-            return _geography_from_match(exact, resolution)
+            lat = _safe_float_coord(exact.get("coordinates", {}).get("y"))
+            lon = _safe_float_coord(exact.get("coordinates", {}).get("x"))
+            if lat is not None and lon is not None:
+                resolution = AddressResolution(
+                    confidence="High",
+                    method="census_exact",
+                    input_address=input_address,
+                    matched_address=exact.get("matchedAddress"),
+                    latitude=lat,
+                    longitude=lon,
+                )
+                geo = _geography_from_match(exact, resolution)
+                if geo is not None:
+                    return geo
+            else:
+                logger.warning(
+                    "Census address match missing valid coordinates; trying fallbacks.",
+                    extra={"input_address": input_address},
+                )
 
         coordinate_fallback = await _coordinate_fallback(client, input_address)
         if coordinate_fallback:
@@ -49,20 +71,30 @@ async def geocode_address(address: str, city: str, state: str) -> AddressGeograp
         for query in _variant_queries(input_address):
             match = await _census_address_match(client, query)
             if match:
+                lat = _safe_float_coord(match.get("coordinates", {}).get("y"))
+                lon = _safe_float_coord(match.get("coordinates", {}).get("x"))
+                if lat is None or lon is None:
+                    logger.warning(
+                        "Census variant match missing valid coordinates; skipping variant.",
+                        extra={"query": query},
+                    )
+                    continue
                 resolution = AddressResolution(
                     confidence="Low",
                     method="census_variant",
                     input_address=input_address,
                     matched_address=match.get("matchedAddress"),
-                    latitude=float(match.get("coordinates", {}).get("y")),
-                    longitude=float(match.get("coordinates", {}).get("x")),
+                    latitude=lat,
+                    longitude=lon,
                     explanation=(
                         "We could not find a direct Census match for the submitted address. "
                         "A normalized address variant matched Census, so neighborhood data is "
                         "based on that matched geography. Please review the matched address."
                     ),
                 )
-                return _geography_from_match(match, resolution)
+                geo = _geography_from_match(match, resolution)
+                if geo is not None:
+                    return geo
 
     return None
 
@@ -107,8 +139,14 @@ async def _coordinate_fallback(
         return None
 
     result = results[0]
-    latitude = float(result["lat"])
-    longitude = float(result["lon"])
+    latitude = _safe_float_coord(result.get("lat"))
+    longitude = _safe_float_coord(result.get("lon"))
+    if latitude is None or longitude is None:
+        logger.warning(
+            "Nominatim result missing valid lat/lon; coordinate fallback aborted.",
+            extra={"input_address": input_address},
+        )
+        return None
     geo_response = await client.get(
         COORDINATES_URL,
         params={

@@ -41,7 +41,8 @@ async def fetch_place_market_by_geoid(place_geoid: str) -> CensusPlaceMarket | N
         return None
     state = place_geoid[:2]
     place = place_geoid[2:]
-    record = await _fetch_place_acs_record(state, place)
+    async with httpx.AsyncClient(timeout=20) as client:
+        record = await _fetch_place_acs_record(client, state, place)
     if record is None:
         return None
 
@@ -78,70 +79,71 @@ async def fetch_neighborhood_market(
     """
 
     effective_block_group = block_group
-    primary = await _fetch_acs_record(state_fips, county_fips, tract, block_group)
-    if primary is None and block_group is not None:
-        primary = await _fetch_acs_record(state_fips, county_fips, tract, None)
-        effective_block_group = None
-    if primary is None:
-        return None
+    async with httpx.AsyncClient(timeout=20) as client:
+        primary = await _fetch_acs_record(client, state_fips, county_fips, tract, block_group)
+        if primary is None and block_group is not None:
+            primary = await _fetch_acs_record(client, state_fips, county_fips, tract, None)
+            effective_block_group = None
+        if primary is None:
+            return None
 
-    metrics = _metrics_from_record(primary)
+        metrics = _metrics_from_record(primary)
 
-    if effective_block_group is not None:
-        tract_record = await _fetch_acs_record(state_fips, county_fips, tract, None)
-        tract_metrics = _metrics_from_record(tract_record) if tract_record else None
-    else:
-        tract_metrics = metrics
+        if effective_block_group is not None:
+            tract_record = await _fetch_acs_record(client, state_fips, county_fips, tract, None)
+            tract_metrics = _metrics_from_record(tract_record) if tract_record else None
+        else:
+            tract_metrics = metrics
 
-    if effective_block_group and tract_metrics:
-        block_weight, tract_weight = _neighborhood_weights(metrics.housing_units)
-        metrics.neighborhood_ratios_blended_with_tract = True
-        metrics.renter_share = _blend_ratio(
-            metrics.renter_share,
-            tract_metrics.renter_share,
-            block_weight,
-            tract_weight,
-            cap=0.85,
-        )
-        metrics.vacancy_rate = _blend_ratio(
-            metrics.vacancy_rate,
-            tract_metrics.vacancy_rate,
-            block_weight,
-            tract_weight,
-        )
-        metrics.no_vehicle_household_share = _blend_ratio(
-            metrics.no_vehicle_household_share,
-            tract_metrics.no_vehicle_household_share,
-            block_weight,
-            tract_weight,
-        )
-        metrics.public_transit_commute_share = _blend_ratio(
-            metrics.public_transit_commute_share,
-            tract_metrics.public_transit_commute_share,
-            block_weight,
-            tract_weight,
-        )
-        metrics.walking_commute_share = _blend_ratio(
-            metrics.walking_commute_share,
-            tract_metrics.walking_commute_share,
-            block_weight,
-            tract_weight,
-        )
+        if effective_block_group and tract_metrics:
+            block_weight, tract_weight = _neighborhood_weights(metrics.housing_units)
+            metrics.neighborhood_ratios_blended_with_tract = True
+            metrics.renter_share = _blend_ratio(
+                metrics.renter_share,
+                tract_metrics.renter_share,
+                block_weight,
+                tract_weight,
+                cap=0.85,
+            )
+            metrics.vacancy_rate = _blend_ratio(
+                metrics.vacancy_rate,
+                tract_metrics.vacancy_rate,
+                block_weight,
+                tract_weight,
+            )
+            metrics.no_vehicle_household_share = _blend_ratio(
+                metrics.no_vehicle_household_share,
+                tract_metrics.no_vehicle_household_share,
+                block_weight,
+                tract_weight,
+            )
+            metrics.public_transit_commute_share = _blend_ratio(
+                metrics.public_transit_commute_share,
+                tract_metrics.public_transit_commute_share,
+                block_weight,
+                tract_weight,
+            )
+            metrics.walking_commute_share = _blend_ratio(
+                metrics.walking_commute_share,
+                tract_metrics.walking_commute_share,
+                block_weight,
+                tract_weight,
+            )
 
-    metrics.geography_name = str(primary.get("NAME"))
-    metrics.state_fips = state_fips
-    metrics.county_fips = county_fips
-    metrics.tract = tract
-    metrics.block_group = effective_block_group
+        metrics.geography_name = str(primary.get("NAME"))
+        metrics.state_fips = state_fips
+        metrics.county_fips = county_fips
+        metrics.tract = tract
+        metrics.block_group = effective_block_group
 
-    return CensusNeighborhoodMarket(
-        name=metrics.geography_name,
-        state_fips=state_fips,
-        county_fips=county_fips,
-        tract=tract,
-        block_group=effective_block_group,
-        metrics=metrics,
-    )
+        return CensusNeighborhoodMarket(
+            name=metrics.geography_name,
+            state_fips=state_fips,
+            county_fips=county_fips,
+            tract=tract,
+            block_group=effective_block_group,
+            metrics=metrics,
+        )
 
 
 async def fetch_place_market(city: str, state: str) -> CensusPlaceMarket | None:
@@ -222,6 +224,7 @@ def _metrics_from_record(record: dict[str, Any]) -> MarketMetrics:
 
 
 async def _fetch_acs_record(
+    client: httpx.AsyncClient,
     state_fips: str,
     county_fips: str,
     tract: str,
@@ -240,23 +243,26 @@ async def _fetch_acs_record(
     if settings.census_api_key:
         params["key"] = settings.census_api_key
 
-    async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.get(
-            ACS_BASE_URL,
-            params=params,
-            headers={"User-Agent": "inbound-sdr-copilot/0.1"},
-        )
-        if response.status_code == 204:
-            return None
-        response.raise_for_status()
-        rows = response.json()
+    response = await client.get(
+        ACS_BASE_URL,
+        params=params,
+        headers={"User-Agent": "inbound-sdr-copilot/0.1"},
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    rows = response.json()
 
     if len(rows) < 2:
         return None
     return dict(zip(rows[0], rows[1], strict=False))
 
 
-async def _fetch_place_acs_record(state_fips: str, place_fips: str) -> dict[str, Any] | None:
+async def _fetch_place_acs_record(
+    client: httpx.AsyncClient,
+    state_fips: str,
+    place_fips: str,
+) -> dict[str, Any] | None:
     settings = get_settings()
     params: dict[str, str] = {
         "get": ",".join(ACS_MARKET_VARIABLES),
@@ -266,16 +272,15 @@ async def _fetch_place_acs_record(state_fips: str, place_fips: str) -> dict[str,
     if settings.census_api_key:
         params["key"] = settings.census_api_key
 
-    async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.get(
-            ACS_BASE_URL,
-            params=params,
-            headers={"User-Agent": "inbound-sdr-copilot/0.1"},
-        )
-        if response.status_code == 204:
-            return None
-        response.raise_for_status()
-        rows = response.json()
+    response = await client.get(
+        ACS_BASE_URL,
+        params=params,
+        headers={"User-Agent": "inbound-sdr-copilot/0.1"},
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    rows = response.json()
 
     if len(rows) < 2:
         return None
