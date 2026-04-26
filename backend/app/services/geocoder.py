@@ -27,8 +27,8 @@ def _safe_float_coord(value: Any) -> float | None:
 @dataclass(frozen=True)
 class AddressGeography:
     matched_address: str
-    latitude: float
-    longitude: float
+    latitude: float | None
+    longitude: float | None
     state_fips: str
     county_fips: str
     tract: str
@@ -205,8 +205,8 @@ def _geography_from_geographies(
 
     return AddressGeography(
         matched_address=resolution.matched_address or "",
-        latitude=resolution.latitude or 0,
-        longitude=resolution.longitude or 0,
+        latitude=resolution.latitude,
+        longitude=resolution.longitude,
         state_fips=state_fips,
         county_fips=county_fips,
         tract=tract_id,
