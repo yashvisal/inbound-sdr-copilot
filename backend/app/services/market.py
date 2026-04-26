@@ -1,7 +1,12 @@
 from dataclasses import dataclass
 
 from app.models import AddressResolution, LeadInput, MarketMetrics, SourceSnippet
-from app.services.census import ACS_YEAR, fetch_neighborhood_market, fetch_place_market
+from app.services.census import (
+    ACS_YEAR,
+    fetch_neighborhood_market,
+    fetch_place_market,
+    fetch_place_market_by_geoid,
+)
 from app.services.datausa import fetch_population_history
 from app.services.geocoder import geocode_address
 
@@ -84,6 +89,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
     if geography and geography.place_geoid:
         datausa_place_id = f"16000US{geography.place_geoid}"
         place_name = geography.place_name or f"{lead.city}, {lead.state}"
+        place = await fetch_place_market_by_geoid(geography.place_geoid)
     else:
         datausa_place_id = None
         place_name = f"{lead.city}, {lead.state}"
@@ -95,6 +101,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
     else:
         datausa_place_id = place.datausa_place_id
         place_name = place.name
+        metrics.median_gross_rent = place.metrics.median_gross_rent
 
     if datausa_place_id:
         try:
@@ -124,6 +131,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
         )
 
     for field_name, label in [
+        ("median_gross_rent", "Median gross rent"),
         ("median_income", "Median income"),
         ("housing_units", "Housing units"),
         ("renter_share", "Renter share"),

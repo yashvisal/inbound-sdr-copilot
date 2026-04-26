@@ -47,6 +47,7 @@ class MarketMetrics(BaseModel):
     block_group: str | None = None
     population: int | None = None
     population_growth_rate: float | None = None
+    median_gross_rent: int | None = None
     median_income: int | None = None
     renter_share: float | None = None
     housing_units: int | None = None

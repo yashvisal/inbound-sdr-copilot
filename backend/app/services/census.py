@@ -13,6 +13,7 @@ ACS_BASE_URL = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
 ACS_MARKET_VARIABLES = [
     "NAME",
     "B19013_001E",  # Median household income
+    "B25064_001E",  # Median gross rent
     "B25001_001E",  # Housing units
     "B25002_001E",  # Occupancy status: total housing units
     "B25002_003E",  # Vacant housing units
@@ -33,6 +34,24 @@ class CensusPlaceMarket:
     place_fips: str
     datausa_place_id: str
     metrics: MarketMetrics
+
+
+async def fetch_place_market_by_geoid(place_geoid: str) -> CensusPlaceMarket | None:
+    if len(place_geoid) < 3:
+        return None
+    state = place_geoid[:2]
+    place = place_geoid[2:]
+    record = await _fetch_place_acs_record(state, place)
+    if record is None:
+        return None
+
+    return CensusPlaceMarket(
+        name=str(record.get("NAME", "")),
+        state_fips=state,
+        place_fips=place,
+        datausa_place_id=f"16000US{place_geoid}",
+        metrics=_metrics_from_record(record),
+    )
 
 
 @dataclass(frozen=True)
@@ -66,30 +85,42 @@ async def fetch_neighborhood_market(
         return None
 
     metrics = _metrics_from_record(primary)
+    tract_record = await _fetch_acs_record(state_fips, county_fips, tract, None)
+    tract_metrics = _metrics_from_record(tract_record) if tract_record else None
 
-    if block_group and (
-        metrics.no_vehicle_household_share is None
-        or metrics.public_transit_commute_share is None
-        or metrics.walking_commute_share is None
-    ):
-        tract_record = await _fetch_acs_record(state_fips, county_fips, tract, None)
-        if tract_record:
-            tract_metrics = _metrics_from_record(tract_record)
-            metrics.no_vehicle_household_share = (
-                metrics.no_vehicle_household_share
-                if metrics.no_vehicle_household_share is not None
-                else tract_metrics.no_vehicle_household_share
-            )
-            metrics.public_transit_commute_share = (
-                metrics.public_transit_commute_share
-                if metrics.public_transit_commute_share is not None
-                else tract_metrics.public_transit_commute_share
-            )
-            metrics.walking_commute_share = (
-                metrics.walking_commute_share
-                if metrics.walking_commute_share is not None
-                else tract_metrics.walking_commute_share
-            )
+    if block_group and tract_metrics:
+        block_weight, tract_weight = _neighborhood_weights(metrics.housing_units)
+        metrics.renter_share = _blend_ratio(
+            metrics.renter_share,
+            tract_metrics.renter_share,
+            block_weight,
+            tract_weight,
+            cap=0.85,
+        )
+        metrics.vacancy_rate = _blend_ratio(
+            metrics.vacancy_rate,
+            tract_metrics.vacancy_rate,
+            block_weight,
+            tract_weight,
+        )
+        metrics.no_vehicle_household_share = _blend_ratio(
+            metrics.no_vehicle_household_share,
+            tract_metrics.no_vehicle_household_share,
+            block_weight,
+            tract_weight,
+        )
+        metrics.public_transit_commute_share = _blend_ratio(
+            metrics.public_transit_commute_share,
+            tract_metrics.public_transit_commute_share,
+            block_weight,
+            tract_weight,
+        )
+        metrics.walking_commute_share = _blend_ratio(
+            metrics.walking_commute_share,
+            tract_metrics.walking_commute_share,
+            block_weight,
+            tract_weight,
+        )
 
     metrics.geography_name = str(primary.get("NAME"))
     metrics.state_fips = state_fips
@@ -160,6 +191,7 @@ async def fetch_place_market(city: str, state: str) -> CensusPlaceMarket | None:
 
 def _metrics_from_record(record: dict[str, Any]) -> MarketMetrics:
     median_income = _to_int(record.get("B19013_001E"))
+    median_gross_rent = _to_int(record.get("B25064_001E"))
     housing_units = _to_int(record.get("B25001_001E"))
     total_occupancy_units = _to_int(record.get("B25002_001E"))
     vacant_units = _to_int(record.get("B25002_003E"))
@@ -173,6 +205,7 @@ def _metrics_from_record(record: dict[str, Any]) -> MarketMetrics:
 
     return MarketMetrics(
         median_income=median_income,
+        median_gross_rent=median_gross_rent,
         housing_units=housing_units,
         renter_share=_safe_ratio(renter_units, tenure_total),
         vacancy_rate=_safe_ratio(vacant_units, total_occupancy_units),
@@ -217,6 +250,32 @@ async def _fetch_acs_record(
     return dict(zip(rows[0], rows[1], strict=False))
 
 
+async def _fetch_place_acs_record(state_fips: str, place_fips: str) -> dict[str, Any] | None:
+    settings = get_settings()
+    params: dict[str, str] = {
+        "get": ",".join(ACS_MARKET_VARIABLES),
+        "for": f"place:{place_fips}",
+        "in": f"state:{state_fips}",
+    }
+    if settings.census_api_key:
+        params["key"] = settings.census_api_key
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(
+            ACS_BASE_URL,
+            params=params,
+            headers={"User-Agent": "inbound-sdr-copilot/0.1"},
+        )
+        if response.status_code == 204:
+            return None
+        response.raise_for_status()
+        rows = response.json()
+
+    if len(rows) < 2:
+        return None
+    return dict(zip(rows[0], rows[1], strict=False))
+
+
 def _to_int(value: Any) -> int | None:
     if value in (None, "", "-666666666"):
         return None
@@ -230,3 +289,31 @@ def _safe_ratio(numerator: int | None, denominator: int | None) -> float | None:
     if numerator is None or denominator in (None, 0):
         return None
     return numerator / denominator
+
+
+def _neighborhood_weights(housing_units: int | None) -> tuple[float, float]:
+    """Reduce block-group influence when the local sample is very small."""
+
+    if housing_units is None or housing_units < 500:
+        return 0.35, 0.65
+    if housing_units < 1_000:
+        return 0.50, 0.50
+    return 0.60, 0.40
+
+
+def _blend_ratio(
+    local_value: float | None,
+    tract_value: float | None,
+    local_weight: float,
+    tract_weight: float,
+    cap: float | None = None,
+) -> float | None:
+    if local_value is None:
+        value = tract_value
+    elif tract_value is None:
+        value = local_value
+    else:
+        value = (local_value * local_weight) + (tract_value * tract_weight)
+    if value is None:
+        return None
+    return min(value, cap) if cap is not None else value
