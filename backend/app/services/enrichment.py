@@ -1,4 +1,5 @@
-from app.models import LeadInput, MarketMetrics, SourceSnippet
+from app.models import AddressResolution, LeadInput, MarketMetrics, SourceSnippet
+from app.services.market import enrich_market
 
 
 class EnrichmentBundle:
@@ -9,12 +10,14 @@ class EnrichmentBundle:
         timing_signals: list[str],
         evidence: list[SourceSnippet],
         missing_data: list[str],
+        address_resolution: AddressResolution | None = None,
     ) -> None:
         self.market_metrics = market_metrics
         self.company_text = company_text
         self.timing_signals = timing_signals
         self.evidence = evidence
         self.missing_data = missing_data
+        self.address_resolution = address_resolution
 
 
 async def enrich_lead(lead: LeadInput) -> EnrichmentBundle:
@@ -25,17 +28,19 @@ async def enrich_lead(lead: LeadInput) -> EnrichmentBundle:
     so the API contract and frontend can be developed before API keys are added.
     """
 
+    market = await enrich_market(lead)
     company_text = f"{lead.company} {lead.email.split('@')[-1]}"
     missing_data = [
-        "Market enrichment not connected yet.",
+        *market.missing_data,
         "Company website metadata not connected yet.",
         "News timing enrichment not connected yet.",
     ]
 
     return EnrichmentBundle(
-        market_metrics=MarketMetrics(),
+        market_metrics=market.metrics,
         company_text=company_text,
         timing_signals=[],
-        evidence=[],
+        evidence=market.evidence,
         missing_data=missing_data,
+        address_resolution=market.address_resolution,
     )
