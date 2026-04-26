@@ -40,6 +40,7 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
         analysis = LeadAnalysis(
             lead=lead,
             score=score,
+            address_resolution=enrichment.address_resolution,
             market_metrics=enrichment.market_metrics,
             evidence=enrichment.evidence,
             missing_data=enrichment.missing_data,
