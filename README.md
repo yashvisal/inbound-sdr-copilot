@@ -342,8 +342,8 @@ Positive signals:
 
 Suggested scoring:
 
-- clear property management or multifamily operator: 16-20
-- real estate adjacent or partial fit: 8-15
+- clear property management or multifamily operator: 13-16
+- real estate adjacent or partial fit: 8-12
 - unclear: 3-7
 - clearly unrelated: 0-2
 
@@ -369,8 +369,8 @@ Positive signals:
 
 Suggested scoring:
 
-- strong evidence of scale: 9-12
-- some evidence of scale: 4-8
+- strong evidence of scale: 7-9
+- some evidence of scale: 4-6
 - little or no evidence: 0-3
 
 ### Operational Complexity Signals: 8 Points
@@ -391,8 +391,8 @@ Positive signals:
 
 Suggested scoring:
 
-- strong evidence of tenant or leasing operations: 8-10
-- moderate evidence: 4-7
+- strong evidence of tenant or leasing operations: 6-8
+- moderate evidence: 4-5
 - weak or no evidence: 0-3
 
 ### Verified Company Activity: 6 Points
@@ -411,8 +411,8 @@ Positive signals:
 
 Suggested scoring:
 
-- strong verified activity: 6-8
-- moderate activity: 3-5
+- strong verified activity: 5-6
+- moderate activity: 3-4
 - minimal or no activity: 0-2
 
 Avoid rewarding generic or low-confidence mentions.
