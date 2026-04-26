@@ -34,7 +34,7 @@ def score_lead(
 
     final_score = market_fit.score + company_fit.score + timing.score
     if unrelated:
-        final_score = min(final_score, 50)
+        final_score = min(final_score, 60)
 
     priority = "High" if final_score >= 80 else "Medium" if final_score >= 55 else "Low"
     confidence = _confidence(market_metrics, company_text, timing_signals)
@@ -54,55 +54,162 @@ def _score_market_fit(metrics: MarketMetrics) -> ScoreSection:
     score = 0
     reasons: list[str] = []
 
+    city_score, city_reasons = _score_city_momentum(metrics)
+    rental_score, rental_reasons = _score_neighborhood_rental_demand(metrics)
+    economic_score, economic_reasons = _score_neighborhood_economics(metrics)
+    leasing_score, leasing_reasons = _score_leasing_pressure(metrics)
+    access_score, access_reasons = _score_access_proxy(metrics)
+
+    score += city_score + rental_score + economic_score + leasing_score + access_score
+    reasons.extend(
+        city_reasons
+        + rental_reasons
+        + economic_reasons
+        + leasing_reasons
+        + access_reasons
+    )
+
+    return ScoreSection(score=min(score, 45), max_score=45, reasons=reasons)
+
+
+def _score_city_momentum(metrics: MarketMetrics) -> tuple[int, list[str]]:
+    score = 0
+    reasons: list[str] = []
+
     if metrics.population is None:
         reasons.append("Population data was unavailable.")
     elif metrics.population >= 1_000_000:
-        score += 10
+        score += 6
         reasons.append("Large population base suggests meaningful renter demand.")
     elif metrics.population >= 250_000:
-        score += 6
+        score += 4
         reasons.append("Mid-size population base suggests a moderate demand pool.")
     else:
-        score += 3
+        score += 2
         reasons.append("Smaller population base limits the estimated demand pool.")
 
     if metrics.population_growth_rate is None:
         reasons.append("Population growth data was unavailable.")
     elif metrics.population_growth_rate >= 0.05:
-        score += 10
+        score += 6
         reasons.append("Strong population growth suggests continued rental demand.")
     elif metrics.population_growth_rate >= 0:
-        score += 6
+        score += 4
         reasons.append("Stable or moderate population growth supports leasing demand.")
     else:
-        score += 2
+        score += 1
         reasons.append("Declining population lowers the market momentum signal.")
 
-    if metrics.median_income is None:
-        reasons.append("Income data was unavailable.")
-    elif metrics.median_income >= 90_000:
-        score += 10
-        reasons.append("High median income indicates a strong economic base.")
-    elif metrics.median_income >= 55_000:
-        score += 6
-        reasons.append("Median income indicates a moderate economic base.")
-    else:
-        score += 3
-        reasons.append("Lower median income weakens the economic strength signal.")
+    return min(score, 12), reasons
+
+
+def _score_neighborhood_rental_demand(metrics: MarketMetrics) -> tuple[int, list[str]]:
+    score = 0
+    reasons: list[str] = []
 
     if metrics.renter_share is None:
-        reasons.append("Renter-share data was unavailable.")
-    elif metrics.renter_share >= 0.45:
-        score += 10
-        reasons.append("High renter share indicates a leasing-heavy market.")
-    elif metrics.renter_share >= 0.30:
+        reasons.append("Neighborhood renter-share data was unavailable.")
+    elif metrics.renter_share >= 0.55:
+        score += 8
+        reasons.append("Very high neighborhood renter share indicates strong local rental demand.")
+    elif metrics.renter_share >= 0.40:
         score += 6
-        reasons.append("Moderate renter share supports rental-market relevance.")
-    else:
+        reasons.append("High neighborhood renter share supports local leasing demand.")
+    elif metrics.renter_share >= 0.25:
         score += 3
-        reasons.append("Lower renter share weakens the rental intensity signal.")
+        reasons.append("Moderate renter share suggests some local rental demand.")
+    else:
+        score += 1
+        reasons.append("Lower renter share weakens the neighborhood rental-demand signal.")
 
-    return ScoreSection(score=min(score, 40), max_score=40, reasons=reasons)
+    if metrics.housing_units is None:
+        reasons.append("Neighborhood housing-unit data was unavailable.")
+    elif metrics.housing_units >= 2_500:
+        score += 4
+        reasons.append("Large local housing base suggests meaningful property operations density.")
+    elif metrics.housing_units >= 1_000:
+        score += 3
+        reasons.append("Moderate local housing base supports property operations activity.")
+    elif metrics.housing_units >= 400:
+        score += 2
+        reasons.append("Smaller local housing base provides limited local scale.")
+    else:
+        score += 1
+        reasons.append("Very small local housing base weakens local scale.")
+
+    return min(score, 12), reasons
+
+
+def _score_neighborhood_economics(metrics: MarketMetrics) -> tuple[int, list[str]]:
+    score = 0
+    reasons: list[str] = []
+
+    if metrics.median_income is None:
+        reasons.append("Neighborhood income data was unavailable.")
+    elif metrics.median_income >= 90_000:
+        score += 8
+        reasons.append("High neighborhood median income indicates a strong economic base.")
+    elif metrics.median_income >= 55_000:
+        score += 5
+        reasons.append("Neighborhood median income indicates a moderate economic base.")
+    else:
+        score += 2
+        reasons.append("Lower neighborhood median income weakens the economic strength signal.")
+
+    return min(score, 8), reasons
+
+
+def _score_leasing_pressure(metrics: MarketMetrics) -> tuple[int, list[str]]:
+    if metrics.vacancy_rate is None:
+        return 0, ["Neighborhood vacancy data was unavailable."]
+
+    if metrics.vacancy_rate <= 0.06:
+        return 6, ["Low vacancy suggests strong local leasing pressure."]
+    if metrics.vacancy_rate <= 0.10:
+        return 4, ["Moderate vacancy suggests healthy local leasing pressure."]
+    if metrics.vacancy_rate <= 0.15:
+        return 2, ["Elevated vacancy tempers the local leasing-pressure signal."]
+    return 1, ["High vacancy weakens the local leasing-pressure signal."]
+
+
+def _score_access_proxy(metrics: MarketMetrics) -> tuple[int, list[str]]:
+    score = 0
+    reasons: list[str] = []
+
+    if metrics.no_vehicle_household_share is None:
+        reasons.append("No-vehicle household data was unavailable.")
+    elif metrics.no_vehicle_household_share >= 0.20:
+        score += 3
+        reasons.append("High no-vehicle household share suggests urban access and density.")
+    elif metrics.no_vehicle_household_share >= 0.10:
+        score += 2
+        reasons.append("Moderate no-vehicle household share supports urban access.")
+    else:
+        score += 1
+        reasons.append("Low no-vehicle household share weakens the urban-access signal.")
+
+    if metrics.public_transit_commute_share is None:
+        reasons.append("Public-transit commute data was unavailable.")
+    elif metrics.public_transit_commute_share >= 0.15:
+        score += 2
+        reasons.append("High public-transit commute share supports access-oriented rental demand.")
+    elif metrics.public_transit_commute_share >= 0.05:
+        score += 1
+        reasons.append("Some public-transit commute share supports access-oriented demand.")
+
+    if metrics.walking_commute_share is None:
+        reasons.append("Walking commute data was unavailable.")
+    elif metrics.walking_commute_share >= 0.08:
+        score += 2
+        reasons.append("High walking commute share suggests strong local walkability.")
+    elif metrics.walking_commute_share >= 0.03:
+        score += 1
+        reasons.append("Some walking commute share supports local walkability.")
+
+    if score == 0:
+        reasons.append("Access and urban proxy data did not produce a positive signal.")
+
+    return min(score, 7), reasons
 
 
 def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel, bool]:
@@ -111,11 +218,11 @@ def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel
     reasons: list[str] = []
 
     if len(keyword_hits) >= 3:
-        business_type_score = 18
+        business_type_score = 16
         label: CompanyFitLabel = "Strong fit"
         reasons.append("Public company text strongly matches property management ICP keywords.")
     elif keyword_hits:
-        business_type_score = 12
+        business_type_score = 10
         label = "Likely fit"
         reasons.append("Public company text has some real estate or residential fit signals.")
     elif normalized.strip():
@@ -127,9 +234,10 @@ def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel
         label = "Unclear fit"
         reasons.append("Company context was unavailable, so fit confidence is limited.")
 
-    scale_score = 6 if any(term in normalized for term in ["portfolio", "properties", "units", "locations"]) else 2
-    complexity_score = 6 if any(term in normalized for term in ["resident", "tenant", "tour", "maintenance", "renewal"]) else 2
-    activity_score = 4 if any(term in normalized for term in ["new", "expansion", "growth", "hiring", "acquisition"]) else 1
+    scale_score = 9 if any(term in normalized for term in ["portfolio", "properties", "units", "locations"]) else 2
+    complexity_score = 8 if any(term in normalized for term in ["resident", "tenant", "tour", "maintenance", "renewal"]) else 2
+    activity_score = 6 if any(term in normalized for term in ["new", "expansion", "growth", "hiring", "acquisition"]) else 1
+    property_relevance_score = 3
 
     if scale_score > 2:
         reasons.append("Company text suggests multiple properties, units, or locations.")
@@ -137,13 +245,14 @@ def _score_company_fit(company_text: str) -> tuple[ScoreSection, CompanyFitLabel
         reasons.append("Company text references resident, tenant, leasing, or operations workflows.")
     if activity_score > 1:
         reasons.append("Company text suggests recent activity or growth.")
+    reasons.append("Property relevance scoring is not connected yet; neutral score applied.")
 
-    total = business_type_score + scale_score + complexity_score + activity_score
+    total = business_type_score + scale_score + complexity_score + activity_score + property_relevance_score
     unrelated = bool(normalized.strip()) and not keyword_hits
     if unrelated:
         label = "Poor fit"
 
-    return ScoreSection(score=min(total, 50), max_score=50, reasons=reasons), label, unrelated
+    return ScoreSection(score=min(total, 45), max_score=45, reasons=reasons), label, unrelated
 
 
 def _score_timing(timing_signals: list[str]) -> ScoreSection:
@@ -183,6 +292,11 @@ def _confidence(
             metrics.population_growth_rate,
             metrics.median_income,
             metrics.renter_share,
+            metrics.housing_units,
+            metrics.vacancy_rate,
+            metrics.no_vehicle_household_share,
+            metrics.public_transit_commute_share,
+            metrics.walking_commute_share,
         ]
     )
     signals += 1 if company_text.strip() else 0
