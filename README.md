@@ -182,88 +182,128 @@ ICP -> Market Fit -> Company Fit -> Timing -> Final Score -> Sales Outputs
 
 Final score is out of 100 points:
 
-| Category | Points | Purpose |
-| --- | ---: | --- |
-| Market Fit | 40 | Estimate leasing demand in the lead's market |
-| Company Fit | 50 | Estimate whether the company matches EliseAI's property management ICP |
-| Timing / Why Now | 10 | Estimate whether there is a current reason to prioritize outreach |
 
-Company fit carries the most weight because a strong market does not matter if the company is not a relevant buyer. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
+| Category         | Points | Purpose                                                                |
+| ---------------- | ------ | ---------------------------------------------------------------------- |
+| Market Fit       | 45     | Estimate leasing demand at both city and neighborhood level             |
+| Company / Property Fit | 45 | Estimate whether the company and submitted property match EliseAI's ICP |
+| Timing / Why Now | 10     | Estimate whether there is a current reason to prioritize outreach      |
 
-## Market Fit: 40 Points
 
-Market Fit estimates whether the property is located in a market with strong rental demand and likely leasing activity.
+Market Fit and Company / Property Fit carry equal weight because the lead opportunity is the combination of the property location and the buyer fit. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
 
-### Population Size: 10 Points
+## Market Fit: 45 Points
 
-Purpose: estimate demand pool size.
+Market Fit estimates whether the property is located in a strong rental market and a locally attractive neighborhood. It intentionally combines macro city-level momentum with address-sensitive neighborhood signals.
 
-- large market: 8-10
-- mid-size market: 4-7
-- small market: 0-3
+### City / Market Momentum: 12 Points
 
-### Population Growth: 10 Points
+Purpose: estimate broad market scale and growth.
 
-Purpose: estimate market momentum and expansion.
+Sources:
 
-- strong growth: 8-10
-- moderate growth: 4-7
-- flat or declining: 0-3
-
-### Economic Strength / Rent Proxy: 10 Points
-
-Purpose: estimate whether the market supports valuable rental operations.
+- Data USA
 
 Signals:
 
-- median income
-- optional rent proxy if available
-- economic base
+- city/place population
+- multi-year population growth
 
-Suggested scoring:
+Reasoning:
 
-- high income or strong economic base: 8-10
-- moderate: 4-7
-- low: 0-3
+Macro growth matters because SDRs should care whether the broader market is expanding. A strong neighborhood in a stagnant market can still be useful, but high-growth markets usually create more leasing activity and operational pressure.
 
-### Rental Intensity: 10 Points
+### Neighborhood Rental Demand: 12 Points
 
-Purpose: estimate how leasing-heavy the market is.
+Purpose: estimate local rental-market relevance near the submitted property.
+
+Sources:
+
+- Census Geocoder
+- ACS 5-year tract or block-group data
 
 Signals:
 
 - renter share
-- housing unit density
-- multifamily or housing density proxies when available
+- local housing units or occupied rental units
 
-Suggested scoring:
+Reasoning:
 
-- high renter share or dense housing market: 8-10
-- moderate: 4-7
-- low: 0-3
+This is the core address-sensitive market signal. A property in a renter-heavy tract or block group is more likely to sit in an area with leasing activity, resident turnover, and property operations complexity.
+
+### Neighborhood Economic Strength: 8 Points
+
+Purpose: estimate whether the local neighborhood supports valuable rental operations.
+
+Sources:
+
+- ACS 5-year tract or block-group data
+
+Signals:
+
+- median household income
+- optional median gross rent later
+
+Reasoning:
+
+Higher-income or economically strong neighborhoods may support higher-value rental operations and stronger willingness to pay for operational software. This should matter, but not dominate.
+
+### Leasing Pressure: 6 Points
+
+Purpose: estimate how tight the local rental market may be.
+
+Sources:
+
+- ACS 5-year tract or block-group data
+
+Signals:
+
+- vacancy rate
+
+Reasoning:
+
+Vacancy provides a rough indication of leasing pressure. Lower vacancy can suggest strong demand; higher vacancy may suggest a need for better leasing operations but also weaker demand. This signal gets moderate weight because interpretation can vary by market.
+
+### Access / Urban Proxy: 7 Points
+
+Purpose: approximate walkability, transit access, and urban density without relying on paid or brittle external APIs.
+
+Sources:
+
+- ACS 5-year tract or block-group data
+
+Signals:
+
+- no-vehicle household share
+- public transit commute share
+- walking commute share
+
+Reasoning:
+
+Walkability and urban access are relevant to rental demand, but Walk Score and OSM-style integrations add access and reliability risk. ACS commute and vehicle-access variables provide free, explainable proxies for urban rental-market characteristics.
 
 ### Market Output
 
 The system should return:
 
-- Market Fit score out of 40
+- Market Fit score out of 45
 - market summary
 - key reasons
 - raw metrics used
 
 Example reasons:
 
-- Large population base suggests meaningful renter demand.
-- High renter share indicates a leasing-heavy market.
-- Population growth suggests continued rental demand.
+- City population and growth indicate healthy market momentum.
+- Tract-level renter share indicates strong local rental demand.
+- Transit and no-vehicle household signals suggest urban access.
 
-## Company Fit: 50 Points
+## Company / Property Fit: 45 Points
 
-Company Fit estimates whether the company is likely a relevant property management or real estate operator with enough operational complexity to benefit from EliseAI.
+Company / Property Fit estimates whether the company and submitted property appear relevant to EliseAI's property management ICP.
 
 This analysis detects evidence of fit and scale. It should not claim to know exact portfolio size unless that data is directly found.
 
-### Business Type Fit: 20 Points
+### Business Type Fit: 16 Points
 
 Purpose: determine whether the company is relevant to EliseAI's property management ICP.
 
@@ -287,9 +327,9 @@ Suggested scoring:
 
 Hard constraint:
 
-If the company is clearly unrelated to real estate, property management, multifamily, apartments, residential leasing, or housing operations, cap the final score at 50 regardless of market score.
+If the company/property context is clearly unrelated to real estate, property management, multifamily, apartments, residential leasing, or housing operations, cap the final score at Medium priority regardless of market score.
 
-### Evidence of Scale: 12 Points
+### Evidence of Scale: 9 Points
 
 Purpose: detect whether the company likely manages enough properties or units to have meaningful operational needs.
 
@@ -311,7 +351,7 @@ Suggested scoring:
 - some evidence of scale: 4-8
 - little or no evidence: 0-3
 
-### Operational Complexity Signals: 10 Points
+### Operational Complexity Signals: 8 Points
 
 Purpose: detect whether the company likely has workflows EliseAI can automate.
 
@@ -333,7 +373,7 @@ Suggested scoring:
 - moderate evidence: 4-7
 - weak or no evidence: 0-3
 
-### Verified Company Activity: 8 Points
+### Verified Company Activity: 6 Points
 
 Purpose: detect whether the company appears active enough to prioritize.
 
@@ -355,11 +395,32 @@ Suggested scoring:
 
 Avoid rewarding generic or low-confidence mentions.
 
+### Property Relevance: 6 Points
+
+Purpose: use the submitted property address as a lightweight signal for whether this is a relevant property/operator combination.
+
+Positive signals:
+
+- address or property name contains residential terms such as apartments, residences, homes, lofts, villas, flats, townhomes, or communities
+- geocoder or later property context indicates likely residential or mixed-use context
+- company text references the submitted property, communities, apartments, or resident workflows
+
+Suggested scoring:
+
+- clear residential or multifamily signal: 5-6
+- likely residential or mixed-use: 3-4
+- unknown or insufficient confidence: 2
+- clearly commercial or irrelevant: 0-1
+
+Important:
+
+Property relevance belongs in Company / Property Fit, not Market Fit. If confidence is low, default neutral rather than heavily penalizing the lead.
+
 ### Company Output
 
 The system should return:
 
-- Company Fit score out of 50
+- Company / Property Fit score out of 45
 - company fit label: Strong fit, Likely fit, Unclear fit, or Poor fit
 - evidence snippets
 - key reasons
@@ -421,11 +482,13 @@ Recent expansion activity gives the SDR a timely reason to reach out.
 Final Score = Market Fit + Company Fit + Timing
 ```
 
-| Final Score | Priority |
-| ---: | --- |
-| 80-100 | High Priority |
-| 55-79 | Medium Priority |
-| 0-54 | Low Priority |
+
+| Final Score | Priority        |
+| ----------- | --------------- |
+| 80-100      | High Priority   |
+| 55-79       | Medium Priority |
+| 0-54        | Low Priority    |
+
 
 ## Scoring Guardrails
 
@@ -435,6 +498,35 @@ Final Score = Market Fit + Company Fit + Timing
 - Clearly irrelevant companies should be capped at low or medium priority.
 - Every score must include human-readable reasoning.
 - Every output should distinguish between directly sourced facts and inferred signals when possible.
+- Address resolution confidence should not reduce the numeric Market Fit score. It should be shown as metadata so users understand how the tract/block-group geography was resolved.
+
+## Address Resolution Confidence
+
+Market Fit V2 uses the submitted property address to resolve tract/block-group geography. Because real inbound addresses can include branded building names, neighborhood names, odd local address formats, or campus/federal land, address resolution is tracked separately from scoring.
+
+Resolution order:
+
+1. Census exact address match.
+2. Coordinate fallback using Nominatim, followed by Census coordinate-to-geography lookup.
+3. Census normalized variant match.
+4. Unresolved, with a request for the user to confirm the address.
+
+Confidence levels:
+
+| Confidence | Meaning | Product behavior |
+| --- | --- | --- |
+| High | Census matched the submitted address directly. | Use tract/block group without warning. |
+| Medium | Direct Census match failed, but coordinate fallback found a plausible location and Census mapped it to tract/block group. | Use score as-is and show an informational note. |
+| Low | Only a normalized variant matched, or the matched address may differ materially from the input. | Use score as-is and show a stronger review note. |
+| Unresolved | No reliable tract/block-group geography was found. | Use city-level fallback if available and ask the user to confirm the address. |
+
+The Market Fit score remains based on the resolved geography. Confidence does not penalize the score; it explains the assumption used to get the neighborhood data.
+
+Example explanation for medium confidence:
+
+```text
+We could not find a direct Census match for the submitted address, so we used coordinate-based resolution. The fallback returned a location that appears to match the submitted address or property area, and Census mapped that coordinate to a tract/block group. The Market Fit score is based on that resolved geography.
+```
 
 ## Expected System Behavior
 
@@ -473,8 +565,8 @@ For each lead, the system should output:
 
 ### Score Breakdown
 
-- Market Fit score out of 40
-- Company Fit score out of 50
+- Market Fit score out of 45
+- Company / Property Fit score out of 45
 - Timing score out of 10
 
 ### Why This Lead
@@ -546,6 +638,8 @@ flowchart TD
   outputs --> frontend
 ```
 
+
+
 ## Local Development
 
 ### Backend
@@ -563,6 +657,21 @@ Useful endpoints:
 
 - `GET /health`
 - `POST /api/leads/analyze`
+
+Market Fit V2 can be verified without starting the server:
+
+```bash
+cd backend
+uv run python scripts/verify_market_fit.py
+```
+
+The verifier defaults to `301 W 2nd St, Austin, TX` and should return populated market metrics from Data USA and address-level Census Geocoder plus ACS 5-year enrichment, including city population, growth, tract/block-group geography, median income, renter share, housing units, vacancy rate, access/urban proxy metrics, evidence snippets, and a Market Fit score.
+
+You can test another property address with:
+
+```bash
+uv run python scripts/verify_market_fit.py --address "PROPERTY ADDRESS" --city "Austin" --state "TX"
+```
 
 ### Frontend
 
@@ -661,7 +770,15 @@ A scheduled job could run daily at 9 AM to:
 - tests for priority tier mapping
 - tests for company-fit cap rules
 - tests for missing-data behavior
+- deterministic Market Fit tests for Austin-like city metrics
 - mocked API fixture tests for DataUSA, Census, NewsAPI, and company metadata enrichment
+
+Run backend tests:
+
+```bash
+cd backend
+uv run pytest -q
+```
 
 ### Scenario Tests
 
