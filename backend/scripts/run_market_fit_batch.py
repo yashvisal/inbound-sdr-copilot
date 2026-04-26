@@ -14,13 +14,15 @@ class TestAddress:
     city: str
     state: str
     zip_code: str
+    country: str = "US"
 
     @property
     def label(self) -> str:
-        return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+        base = f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+        return base if self.country == "US" else f"{base}, {self.country}"
 
 
-TEST_ADDRESSES = [
+BASELINE_ADDRESSES = [
     TestAddress("20 Hudson Yards", "New York", "NY", "10001"),
     TestAddress("11-24 Beach 21st St", "Far Rockaway", "NY", "11691"),
     TestAddress("1201 S Joyce St", "Arlington", "VA", "22202"),
@@ -33,6 +35,24 @@ TEST_ADDRESSES = [
     TestAddress("1100 S University Ave", "Ann Arbor", "MI", "48104"),
 ]
 
+ROBUSTNESS_ADDRESSES = [
+    TestAddress("701 Brickell Ave", "Miami", "FL", "33131"),
+    TestAddress("55 E Monroe St", "Chicago", "IL", "60603"),
+    TestAddress("1600 Amphitheatre Pkwy", "Mountain View", "CA", "94043"),
+    TestAddress("400 S Hope St", "Los Angeles", "CA", "90071"),
+    TestAddress("1 Infinite Loop", "Cupertino", "CA", "95014"),
+    TestAddress("3500 Deer Creek Rd", "Palo Alto", "CA", "94304"),
+    TestAddress("600 Montgomery St", "San Francisco", "CA", "94111"),
+    TestAddress("2000 McKinney Ave", "Dallas", "TX", "75201"),
+    TestAddress("1000 N West St", "Wilmington", "DE", "19801"),
+    TestAddress("2500 University Dr NW", "Calgary", "AB", "T2N 1N4", "Canada"),
+]
+
+ADDRESS_SETS = {
+    "baseline": BASELINE_ADDRESSES,
+    "robustness": ROBUSTNESS_ADDRESSES,
+}
+
 
 async def analyze_address(address: TestAddress) -> dict:
     lead = LeadInput(
@@ -42,7 +62,7 @@ async def analyze_address(address: TestAddress) -> dict:
         address=address.label,
         city=address.city,
         state=address.state,
-        country="US",
+        country=address.country,
     )
     market = await enrich_market(lead)
     score = score_lead(
@@ -70,6 +90,7 @@ async def analyze_address(address: TestAddress) -> dict:
         "market_metrics": {
             "population": market.metrics.population,
             "population_growth_rate": market.metrics.population_growth_rate,
+            "median_gross_rent": market.metrics.median_gross_rent,
             "median_income": market.metrics.median_income,
             "renter_share": market.metrics.renter_share,
             "housing_units": market.metrics.housing_units,
@@ -120,6 +141,7 @@ def print_human_readable(results: list[dict]) -> None:
             "Metrics: "
             f"population={format_int(metrics['population'])}, "
             f"growth={format_pct(metrics['population_growth_rate'])}, "
+            f"gross_rent={format_int(metrics['median_gross_rent'])}, "
             f"income={format_int(metrics['median_income'])}, "
             f"renter_share={format_pct(metrics['renter_share'])}, "
             f"housing_units={format_int(metrics['housing_units'])}, "
@@ -145,10 +167,16 @@ async def main() -> None:
         action="store_true",
         help="Print raw JSON instead of a human-readable report.",
     )
+    parser.add_argument(
+        "--set",
+        choices=sorted(ADDRESS_SETS),
+        default="baseline",
+        help="Address set to run.",
+    )
     args = parser.parse_args()
 
     results = []
-    for address in TEST_ADDRESSES:
+    for address in ADDRESS_SETS[args.set]:
         results.append(await analyze_address(address))
 
     if args.json:
