@@ -13,6 +13,11 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
 [project.scripts]
 dev = "app.cli:main"
 

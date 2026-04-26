@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     news_api_key: str | None = Field(default=None, alias="NEWS_API_KEY")
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    enrichment_max_concurrency: int = Field(default=5, alias="ENRICHMENT_MAX_CONCURRENCY")
 
 
 @lru_cache

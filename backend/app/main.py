@@ -5,7 +5,7 @@ from app.config import get_settings
 from app.models import AnalyzeLeadsRequest, AnalyzeLeadsResponse, LeadAnalysis
 from app.outreach import attach_sales_outputs
 from app.scoring import score_lead
-from app.services.enrichment import enrich_lead
+from app.services.enrichment import enrich_leads
 
 settings = get_settings()
 
@@ -27,10 +27,10 @@ async def health() -> dict[str, str]:
 
 @app.post("/api/leads/analyze", response_model=AnalyzeLeadsResponse)
 async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
+    enrichments = await enrich_leads(payload.leads)
     analyses: list[LeadAnalysis] = []
 
-    for lead in payload.leads:
-        enrichment = await enrich_lead(lead)
+    for lead, enrichment in zip(payload.leads, enrichments, strict=True):
         score = score_lead(
             lead=lead,
             market_metrics=enrichment.market_metrics,
@@ -40,6 +40,7 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
         analysis = LeadAnalysis(
             lead=lead,
             score=score,
+            address_resolution=enrichment.address_resolution,
             market_metrics=enrichment.market_metrics,
             evidence=enrichment.evidence,
             missing_data=enrichment.missing_data,
