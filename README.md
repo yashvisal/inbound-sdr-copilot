@@ -186,11 +186,12 @@ Final score is out of 100 points:
 | Category               | Points | Purpose                                                                 |
 | ---------------------- | ------ | ----------------------------------------------------------------------- |
 | Market Fit             | 45     | Estimate leasing demand at both city and neighborhood level             |
-| Company / Property Fit | 45     | Estimate whether the company and submitted property match EliseAI's ICP |
+| Company Fit            | 39     | Estimate leasing volume, operational complexity, and EliseAI product fit |
+| Property Fit           | 6      | Estimate whether the submitted property appears residential and relevant |
 | Timing / Why Now       | 10     | Estimate whether there is a current reason to prioritize outreach       |
 
 
-Market Fit and Company / Property Fit carry equal weight because the lead opportunity is the combination of the property location and the buyer fit. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
+Market Fit and Company / Property Fit carry equal weight because the lead opportunity is the combination of the property location and the buyer fit. Property Fit is exposed separately for explainability, but it remains part of the broader 45-point company/property bucket. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
 
 ## Market Fit: 45 Points
 
@@ -323,62 +324,33 @@ Example reasons:
 
 Company / Property Fit estimates whether the company and submitted property appear relevant to EliseAI's property management ICP.
 
-This analysis detects evidence of fit and scale. It should not claim to know exact portfolio size unless that data is directly found.
+This analysis detects evidence of leasing volume, operational complexity, product fit, and basic residential property relevance. It should not claim to know exact portfolio size unless that data is directly found.
 
-### Business Type Fit: 16 Points
+Live company scoring uses a bounded extraction and classification pipeline:
 
-Purpose: determine whether the company is relevant to EliseAI's property management ICP.
+```text
+Serper + company website evidence -> OpenAI structured classification -> deterministic scale calibration and score mapping -> audit output
+```
+
+OpenAI is used only to interpret source-backed evidence into micro-signal buckets and cited evidence. It does not browse, research independently, or return final scores. Numeric scale is calibrated by code, not by the LLM: the scorer extracts all candidate counts for units, homes, apartments, communities, and properties, filters obvious transaction/listing/subset noise, and uses the largest valid portfolio-scale candidate. If OpenAI is unavailable, returns invalid JSON, omits required fields, cites unsupported evidence, or returns unsupported buckets, the system falls back to the deterministic rule classifier.
+
+### Company Fit: 39 Points
+
+Purpose: determine whether EliseAI is likely useful for the account.
 
 Positive signals:
 
 - property management
-- real estate
 - multifamily
 - apartments
 - residential
 - leasing
 - communities
 - rental housing
-
-Suggested scoring:
-
-- clear property management or multifamily operator: 13-16
-- real estate adjacent or partial fit: 8-12
-- unclear: 3-7
-- clearly unrelated: 0-2
-
-Hard constraint:
-
-If the company/property context is clearly unrelated to real estate, property management, multifamily, apartments, residential leasing, or housing operations, cap the final score at Medium priority regardless of market score.
-
-### Evidence of Scale: 9 Points
-
-Purpose: detect whether the company likely manages enough properties or units to have meaningful operational needs.
-
-Positive signals:
-
 - portfolio
-- communities
 - properties
 - units
 - multiple locations
-- regional
-- national
-- serves multiple markets
-- manages apartments, properties, or units
-
-Suggested scoring:
-
-- strong evidence of scale: 7-9
-- some evidence of scale: 4-6
-- little or no evidence: 0-3
-
-### Operational Complexity Signals: 8 Points
-
-Purpose: detect whether the company likely has workflows EliseAI can automate.
-
-Positive signals:
-
 - leasing services
 - tenant services
 - resident communication
@@ -391,13 +363,34 @@ Positive signals:
 
 Suggested scoring:
 
-- strong evidence of tenant or leasing operations: 6-8
-- moderate evidence: 4-5
-- weak or no evidence: 0-3
+- strong leasing-volume, operational-complexity, and product-fit evidence: 32-39
+- relevant property operator with some operating scale or workflow signals: 22-31
+- partial or unclear fit: 9-21
+- clearly unrelated: 0-8
 
-### Verified Company Activity: 6 Points
+Micro-signal scoring remains deterministic:
 
-Purpose: detect whether the company appears active enough to prioritize.
+- leasing volume: Very High 13, High 11, Medium 8, Low 4, None 0, Unknown 0
+- operational complexity: Very High 13, High 9, Medium 6, Low 4, None 0, Unknown 0
+- product fit: Very Strong 13, Strong 10, Moderate 5, Weak 1, None 0, Unknown 0
+
+`Unknown` means insufficient evidence and contributes no points. Confidence is audit metadata only and does not change the numeric score. If product fit is Weak, Company Fit is capped at 15 to prevent false positives. If product fit is None, Company Fit is capped at 5 for non-ICP rejection.
+
+Company Fit also applies a small deterministic calibration layer:
+
+- Very High leasing volume implies Very High operational complexity.
+- High leasing volume implies at least High operational complexity.
+- Low leasing volume caps operational complexity at Low.
+- single-family rental operators cap leasing volume and product fit below multifamily levels.
+- scaled multifamily operators receive product-fit calibration from extracted unit count.
+
+Hard constraint:
+
+If the company/property context is clearly unrelated to real estate, property management, multifamily, apartments, residential leasing, or housing operations, cap the final score at Medium priority regardless of market score.
+
+### Timing Activity Signals
+
+Recent activity is not part of Company Fit. It belongs in Timing and in SDR-facing explanations.
 
 Positive signals:
 
@@ -409,15 +402,9 @@ Positive signals:
 - new community or property
 - website has current operational information
 
-Suggested scoring:
-
-- strong verified activity: 5-6
-- moderate activity: 3-4
-- minimal or no activity: 0-2
-
 Avoid rewarding generic or low-confidence mentions.
 
-### Property Relevance: 6 Points
+### Property Fit: 6 Points
 
 Purpose: use the submitted property address as a lightweight signal for whether this is a relevant property/operator combination.
 
@@ -431,20 +418,23 @@ Suggested scoring:
 
 - clear residential or multifamily signal: 5-6
 - likely residential or mixed-use: 3-4
-- unknown or insufficient confidence: 2
+- unknown or insufficient confidence: 3
 - clearly commercial or irrelevant: 0-1
 
 Important:
 
-Property relevance belongs in Company / Property Fit, not Market Fit. If confidence is low, default neutral rather than heavily penalizing the lead.
+Property relevance belongs in Company / Property Fit, not Market Fit. Keep it simple: residential rental terms are positive, office/industrial/warehouse-style terms are weak or negative, and missing data defaults neutral rather than heavily penalizing the lead.
 
 ### Company Output
 
 The system should return:
 
 - Company / Property Fit score out of 45
+- separate Company Fit and Property Fit sections for UI/demo explainability
 - company fit label: Strong fit, Likely fit, Unclear fit, or Poor fit
-- evidence snippets
+- evidence snippets from website metadata and search snippets
+- score breakdown for leasing volume, operational complexity, and product fit
+- extraction audit with raw evidence, evidence source, parsed value, interpreted bucket, confidence, classifier, and score contribution
 - key reasons
 
 Example reasons:
@@ -501,15 +491,15 @@ Recent expansion activity gives the SDR a timely reason to reach out.
 ## Final Score and Priority Tiers
 
 ```text
-Final Score = Market Fit + Company Fit + Timing
+Final Score = Market Fit + Company Fit + Property Fit + Timing
 ```
 
 
 | Final Score | Priority        |
 | ----------- | --------------- |
-| 80-100      | High Priority   |
-| 55-79       | Medium Priority |
-| 0-54        | Low Priority    |
+| 40-100      | High Priority   |
+| 30-39       | Medium Priority |
+| 0-29        | Low Priority    |
 
 
 ## Scoring Guardrails
@@ -590,7 +580,8 @@ For each lead, the system should output:
 ### Score Breakdown
 
 - Market Fit score out of 45
-- Company / Property Fit score out of 45
+- Company Fit score out of 39
+- Property Fit score out of 6
 - Timing score out of 10
 
 ### Why This Lead
@@ -697,6 +688,27 @@ You can test another property address with:
 uv run python scripts/verify_market_fit.py --address "PROPERTY ADDRESS" --city "Austin" --state "TX"
 ```
 
+Company / Property Fit can also be verified without starting the server:
+
+```bash
+uv run python scripts/verify_company_fit.py \
+  --company "Harbor Residential" \
+  --email "maya@harborresidential.com" \
+  --address "The Morrison Apartments, 123 Main St" \
+  --search-snippet "Harbor Residential manages apartment communities and 12,000 units with centralized leasing and resident communication teams."
+```
+
+Use `--live` to search the company name with Serper, fetch the discovered website when available, and score the live evidence from the configured backend environment.
+
+Golden company-fit reports can be regenerated with:
+
+```bash
+uv run python scripts/export_company_fit_golden_cases.py
+uv run python scripts/export_company_fit_golden_cases.py --live
+```
+
+These write JSON and CSV artifacts to `backend/reports/` for offline and live review.
+
 ### Frontend
 
 ```bash
@@ -714,8 +726,10 @@ Backend:
 
 - `FRONTEND_ORIGIN`: allowed frontend origin for CORS
 - `NEWS_API_KEY`: optional for NewsAPI timing enrichment
+- `SERPER_API_KEY`: optional for company/property search snippet enrichment
 - `CENSUS_API_KEY`: optional for Census API access
-- `OPENAI_API_KEY`: optional for future LLM-assisted outreach generation
+- `OPENAI_API_KEY`: optional for source-backed company micro-signal classification
+- `OPENAI_MODEL`: optional OpenAI classifier model override, default `gpt-4.1-mini`
 
 Frontend:
 
