@@ -19,3 +19,6 @@ dist/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Backend: generated golden-case / validation reports
+backend/reports/
