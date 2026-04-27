@@ -12,6 +12,7 @@ def build_sales_insights(score: ScoreBreakdown) -> list[str]:
     insights = [
         *score.market_fit.reasons[:2],
         *score.company_fit.reasons[:2],
+        *score.property_fit.reasons[:1],
     ]
     if score.timing.score >= 4:
         insights.extend(score.timing.reasons[:1])
@@ -21,11 +22,12 @@ def build_sales_insights(score: ScoreBreakdown) -> list[str]:
 def build_outreach_email(lead: LeadInput, score: ScoreBreakdown) -> str:
     market_reason = score.market_fit.reasons[0] if score.market_fit.reasons else "your market appears relevant for leasing demand"
     company_reason = score.company_fit.reasons[0] if score.company_fit.reasons else "your team appears relevant to property operations"
+    property_reason = score.property_fit.reasons[0] if score.property_fit.reasons else "the submitted property appears relevant"
 
     return (
         f"Hi {lead.name},\n\n"
         f"I noticed {lead.company} and wanted to reach out because {market_reason.lower()} "
-        f"and {company_reason.lower()}\n\n"
+        f"{company_reason.lower()}, and {property_reason.lower()}\n\n"
         "EliseAI helps property management teams respond faster to leasing inquiries, "
         "automate resident communication, and reduce manual follow-up work for onsite teams.\n\n"
         "Would it be worth a quick conversation to compare how your team handles inbound "

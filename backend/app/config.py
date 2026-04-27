@@ -16,8 +16,10 @@ class Settings(BaseSettings):
         alias="FRONTEND_ORIGIN",
     )
     news_api_key: str | None = Field(default=None, alias="NEWS_API_KEY")
+    serper_api_key: str | None = Field(default=None, alias="SERPER_API_KEY")
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
     enrichment_max_concurrency: int = Field(default=5, alias="ENRICHMENT_MAX_CONCURRENCY")
 
 

@@ -2,7 +2,8 @@ import asyncio
 import logging
 
 from app.config import get_settings
-from app.models import AddressResolution, LeadInput, MarketMetrics, SourceSnippet
+from app.models import AddressResolution, CompanyEnrichment, LeadInput, MarketMetrics, SourceSnippet
+from app.services.company import enrich_company, extract_company_signals
 from app.services.market import enrich_market
 
 logger = logging.getLogger(__name__)
@@ -12,14 +13,14 @@ class EnrichmentBundle:
     def __init__(
         self,
         market_metrics: MarketMetrics,
-        company_text: str,
+        company_enrichment: CompanyEnrichment,
         timing_signals: list[str],
         evidence: list[SourceSnippet],
         missing_data: list[str],
         address_resolution: AddressResolution | None = None,
     ) -> None:
         self.market_metrics = market_metrics
-        self.company_text = company_text
+        self.company_enrichment = company_enrichment
         self.timing_signals = timing_signals
         self.evidence = evidence
         self.missing_data = missing_data
@@ -27,26 +28,17 @@ class EnrichmentBundle:
 
 
 async def enrich_lead(lead: LeadInput) -> EnrichmentBundle:
-    """Placeholder enrichment pipeline.
-
-    The next implementation step will call DataUSA, Census/ACS, NewsAPI, and
-    company website metadata here. For now, return a deterministic empty bundle
-    so the API contract and frontend can be developed before API keys are added.
-    """
+    """Enrich one lead with market and company/property context."""
 
     market = await enrich_market(lead)
-    company_text = f"{lead.company} {lead.email.split('@')[-1]}"
-    missing_data = [
-        *market.missing_data,
-        "Company website metadata not connected yet.",
-        "News timing enrichment not connected yet.",
-    ]
+    company = await enrich_company(lead)
+    missing_data = [*market.missing_data, *company.missing_data]
 
     return EnrichmentBundle(
         market_metrics=market.metrics,
-        company_text=company_text,
-        timing_signals=[],
-        evidence=market.evidence,
+        company_enrichment=company.enrichment,
+        timing_signals=company.enrichment.timing_signals,
+        evidence=[*market.evidence, *company.evidence],
         missing_data=missing_data,
         address_resolution=market.address_resolution,
     )
@@ -72,10 +64,10 @@ async def enrich_leads(
                 return await enrich_lead(lead)
             except Exception:
                 logger.exception("Lead enrichment failed for %s", lead.email)
-                company_text = f"{lead.company} {lead.email.split('@')[-1]}"
+                company_enrichment = extract_company_signals(lead=lead)
                 return EnrichmentBundle(
                     market_metrics=MarketMetrics(),
-                    company_text=company_text,
+                    company_enrichment=company_enrichment,
                     timing_signals=[],
                     evidence=[],
                     missing_data=["Lead enrichment failed unexpectedly."],
