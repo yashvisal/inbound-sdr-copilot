@@ -69,14 +69,18 @@ export default function Home() {
                 <CardTitle>Scoring Model</CardTitle>
                 <CardDescription>Deterministic rubric, source-backed reasons.</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-3 gap-3 text-center">
+              <CardContent className="grid grid-cols-4 gap-3 text-center">
                 <div>
-                  <p className="text-2xl font-semibold">40</p>
+                  <p className="text-2xl font-semibold">45</p>
                   <p className="text-xs text-muted-foreground">Market Fit</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold">50</p>
+                  <p className="text-2xl font-semibold">39</p>
                   <p className="text-xs text-muted-foreground">Company Fit</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold">6</p>
+                  <p className="text-xs text-muted-foreground">Property Fit</p>
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">10</p>
