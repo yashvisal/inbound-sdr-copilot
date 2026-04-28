@@ -14,14 +14,13 @@ The goal is to help SDRs quickly answer four questions:
 
 - Who should I prioritize?
 - Why is this lead worth my time?
-- Why should I reach out now?
 - What should I say?
 
 The system estimates:
 
 - how much leasing demand exists in the lead's market
 - how strong the company fit is for EliseAI
-- whether there is a reason to prioritize outreach now
+- whether the submitted property appears residential and relevant
 
 The scoring system is intentionally explainable, deterministic, and robust when public company data is incomplete.
 
@@ -38,8 +37,8 @@ The assessment asks for a working tool that:
 This MVP satisfies those requirements through:
 
 - CSV upload, sample data, or manual lead intake
-- public API enrichment from demographic, housing, local, and news sources
-- deterministic scoring across market fit, company fit, and timing
+- public API enrichment from demographic, housing, local, and company sources
+- deterministic scoring across market fit, company fit, and property fit
 - ranked lead queue and lead detail views
 - trigger-based analysis via a `Run Analysis` button
 - a rollout plan for SDR testing, pilot, and production expansion
@@ -79,7 +78,7 @@ Contact name and email are primarily used for outreach generation. Scoring is ba
 
 - property location
 - company fit
-- public activity and timing signals
+- submitted property context
 
 The MVP is optimized for U.S. leads because the selected demographic and housing APIs are U.S.-centric. Non-U.S. leads can still be accepted, but they should be flagged as having limited enrichment coverage.
 
@@ -87,7 +86,7 @@ The MVP is optimized for U.S. leads because the selected demographic and housing
 
 - A better lead is connected to property management, multifamily, real estate operations, leasing, or adjacent housing workflows.
 - Markets with larger populations, stronger growth, higher rental intensity, and stronger economic indicators are more likely to support active leasing operations.
-- Recent company or market activity can indicate urgency, but timing should only boost priority; it should not make a poor-fit lead look like a strong lead.
+- Submitted property context should help distinguish residential rental opportunities from commercial or irrelevant properties.
 - Public data is incomplete, especially for smaller property managers, so the system should act as a decision-support tool rather than a perfect qualification engine.
 - City-level market data is a proxy for property opportunity, not proof of account quality.
 - Missing company data should lower confidence, not automatically make a lead low priority.
@@ -131,25 +130,23 @@ Used for:
 - city/state validation
 - optional latitude and longitude
 - optional mapping to county, ZIP, or census geography
+- OSM / Nominatim property metadata such as `class` and `type` when available
 
 Why it matters:
 
-Normalized geography makes downstream market enrichment more reliable.
+Normalized geography makes downstream market enrichment more reliable. OSM property metadata also provides a useful first-pass property-type signal, especially for rejecting obvious non-residential assets such as offices, hospitals, campuses, warehouses, and retail properties.
 
-### NewsAPI
+### Serper Search API
 
 Used for:
 
-- company mentions
-- expansion announcements
-- development activity
-- acquisitions
-- hiring or growth signals
-- recent operational activity
+- company search snippets for account-level fit
+- one property-focused search query for property-scale and leasing evidence
+- source URLs and snippets that can be audited in score explanations
 
 Why it matters:
 
-News data helps identify timing signals and gives SDRs a timely reason to personalize outreach.
+Search results help fill gaps when company websites or OSM metadata are sparse. Property search evidence is filtered strictly: snippets are only used when they reference the submitted exact address, exact street, or submitted building name. Neighborhood-level pages, city-level apartment pages, nearby listings, and snippets for different buildings are discarded before classification.
 
 ### Company Website Metadata
 
@@ -177,7 +174,7 @@ Optional sources can improve the product but are not required for the MVP:
 The scoring model follows this structure:
 
 ```text
-ICP -> Market Fit -> Company Fit -> Timing -> Final Score -> Sales Outputs
+ICP -> Market Fit -> Company Fit -> Property Fit -> Final Score -> Sales Outputs
 ```
 
 Final score is out of 100 points:
@@ -187,11 +184,10 @@ Final score is out of 100 points:
 | ---------------------- | ------ | ----------------------------------------------------------------------- |
 | Market Fit             | 45     | Estimate leasing demand at both city and neighborhood level             |
 | Company Fit            | 39     | Estimate leasing volume, operational complexity, and EliseAI product fit |
-| Property Fit           | 6      | Estimate whether the submitted property appears residential and relevant |
-| Timing / Why Now       | 10     | Estimate whether there is a current reason to prioritize outreach       |
+| Property Fit           | 16     | Estimate whether the submitted property appears residential and relevant |
 
 
-Market Fit and Company / Property Fit carry equal weight because the lead opportunity is the combination of the property location and the buyer fit. Property Fit is exposed separately for explainability, but it remains part of the broader 45-point company/property bucket. Timing carries the least weight because urgency should boost a good lead, not rescue a bad one.
+The lead opportunity is scored as the combination of market demand, account fit, and submitted-property fit. Market Fit remains the largest single category, while Company Fit and Property Fit together carry the majority of the score because buyer relevance and property relevance determine whether EliseAI is likely useful.
 
 ## Market Fit: 45 Points
 
@@ -295,7 +291,7 @@ Signals:
 
 Reasoning:
 
-Walkability and urban access are relevant to rental demand, but Walk Score and OSM-style integrations add access and reliability risk. ACS commute and vehicle-access variables provide free, explainable proxies for urban rental-market characteristics.
+Walkability and urban access are relevant to rental demand. ACS commute and vehicle-access variables provide free, explainable proxies for urban rental-market characteristics without relying on paid walkability APIs.
 
 ### Edge-Case Guards
 
@@ -320,11 +316,11 @@ Example reasons:
 - Tract-level renter share indicates strong local rental demand.
 - Transit and no-vehicle household signals suggest urban access.
 
-## Company / Property Fit: 45 Points
+## Company / Property Fit: 55 Points
 
 Company / Property Fit estimates whether the company and submitted property appear relevant to EliseAI's property management ICP.
 
-This analysis detects evidence of leasing volume, operational complexity, product fit, and basic residential property relevance. It should not claim to know exact portfolio size unless that data is directly found.
+This analysis detects evidence of leasing volume, operational complexity, product fit, and property relevance. It should not claim to know exact portfolio or property size unless that data is directly found.
 
 Live company scoring uses a bounded extraction and classification pipeline:
 
@@ -388,53 +384,47 @@ Hard constraint:
 
 If the company/property context is clearly unrelated to real estate, property management, multifamily, apartments, residential leasing, or housing operations, cap the final score at Medium priority regardless of market score.
 
-### Timing Activity Signals
+### Property Fit: 16 Points
 
-Recent activity is not part of Company Fit. It belongs in Timing and in SDR-facing explanations.
-
-Positive signals:
-
-- recent news
-- recent development or project
-- acquisition
-- expansion
-- hiring
-- new community or property
-- website has current operational information
-
-Avoid rewarding generic or low-confidence mentions.
-
-### Property Fit: 6 Points
-
-Purpose: use the submitted property address as a lightweight signal for whether this is a relevant property/operator combination.
+Purpose: decide whether the submitted property is a residential leasing asset where EliseAI can plausibly create value.
 
 Positive signals:
 
-- address or property name contains residential terms such as apartments, residences, homes, lofts, villas, flats, townhomes, or communities
-- geocoder or later property context indicates likely residential or mixed-use context
-- company text references the submitted property, communities, apartments, or resident workflows
+- OSM / Nominatim metadata identifies the property as apartments, residential, student housing, senior living, or another residential type
+- address-matched search results mention unit count, apartment homes, bedrooms, communities, or similar scale evidence
+- address-matched search results mention active rental demand signals such as now leasing, available units, floor plans, schedule a tour, or a leasing office
 
-Suggested scoring:
+Extraction:
 
-- clear residential or multifamily signal: 5-6
-- likely residential or mixed-use: 3-4
-- unknown or insufficient confidence: 3
-- clearly commercial or irrelevant: 0-1
+- fetch OSM / Nominatim metadata for the submitted address and map meaningful `class` / `type` values into property categories
+- run one Serper query for the submitted property address, city, and state
+- discard property search snippets unless they reference the exact submitted address, exact street, or submitted building name
+- reject neighborhood-level pages, city-level apartment searches, nearby listings, and snippets for different buildings
+- pass the remaining property-level snippets to OpenAI for structured classification
+- classify exactly three signals: `property_type`, `property_scale`, and `leasing_activity`
+- apply deterministic scoring rules in code; the LLM does not calculate points
+
+Scoring:
+
+- Property Type, 0-6 points: multifamily, student housing, or senior living = 6; residential or single-family rental = 4; mixed-use = 3; commercial or non-residential = 0; unknown = 3.
+- Property Scale, 0-6 points: 200+ units/homes/beds/properties = 6; 50-199 = 5; 1-49 or single-property evidence = 3; none = 0; unknown = 3.
+- Leasing Activity, 0-4 points: active leasing/availability/tour evidence = 4; moderate rental/floor-plan evidence = 3; no leasing evidence = 0; unknown = 2.
 
 Important:
 
-Property relevance belongs in Company / Property Fit, not Market Fit. Keep it simple: residential rental terms are positive, office/industrial/warehouse-style terms are weak or negative, and missing data defaults neutral rather than heavily penalizing the lead.
+Property relevance belongs in Company / Property Fit, not Market Fit. Property type is treated as a gate: if reliable OSM or validated search evidence indicates a non-residential asset, Property Fit is capped so commercial offices, campuses, hospitals, warehouses, and similar assets cannot score highly from generic leasing or search noise. The goal is consistency and explainability, not perfect property reconstruction. When data is unclear, stable neutral fallbacks keep scores from swinging on sparse search results.
 
 ### Company Output
 
 The system should return:
 
-- Company / Property Fit score out of 45
+- Company / Property Fit score out of 55, exposed as separate Company Fit and Property Fit sections
 - separate Company Fit and Property Fit sections for UI/demo explainability
 - company fit label: Strong fit, Likely fit, Unclear fit, or Poor fit
 - evidence snippets from website metadata and search snippets
 - score breakdown for leasing volume, operational complexity, and product fit
 - extraction audit with raw evidence, evidence source, parsed value, interpreted bucket, confidence, classifier, and score contribution
+- property-fit breakdown for property type, property scale, and leasing activity
 - key reasons
 
 Example reasons:
@@ -443,55 +433,10 @@ Example reasons:
 - Website references multiple apartment communities.
 - Public materials mention resident services and leasing operations.
 
-## Timing / Why Now: 10 Points
-
-Timing estimates whether there is a current reason for an SDR to prioritize outreach immediately.
-
-Timing should boost urgency, not determine baseline lead quality.
-
-### Strong Timing Signal: 8-10 Points
-
-Examples:
-
-- expansion
-- acquisition
-- new development
-- new property or community launch
-- hiring or growth push
-- funding or strategic partnership
-
-### Moderate Timing Signal: 4-7 Points
-
-Examples:
-
-- recent article mention
-- general business activity
-- relevant market activity near the company or property location
-
-### Weak or No Timing Signal: 0-3 Points
-
-Examples:
-
-- no recent relevant news
-- old articles only
-- irrelevant mentions
-
-### Timing Output
-
-The system should return:
-
-- Timing score out of 10
-- Why Now summary when applicable
-- source headline or snippet when available
-
-Example:
-
-Recent expansion activity gives the SDR a timely reason to reach out.
-
 ## Final Score and Priority Tiers
 
 ```text
-Final Score = Market Fit + Company Fit + Property Fit + Timing
+Final Score = Market Fit + Company Fit + Property Fit
 ```
 
 
@@ -504,8 +449,7 @@ Final Score = Market Fit + Company Fit + Property Fit + Timing
 
 ## Scoring Guardrails
 
-- Timing should never carry a bad lead into high priority by itself.
-- Strong leads should still score well without timing signals.
+- Strong leads should score well from market, company, and property fit alone.
 - Missing company data should not automatically make a lead low priority.
 - Clearly irrelevant companies should be capped at low or medium priority.
 - Every score must include human-readable reasoning.
@@ -562,11 +506,11 @@ Expected result: Low priority or capped at medium-low.
 
 Reason: macro demand does not matter if the company is not a relevant buyer.
 
-### Case 4: Strong Market + Strong Property Management Company + Expansion News
+### Case 4: Strong Market + Strong Property Management Company + Clear Residential Property
 
 Expected result: High priority.
 
-Reason: strong baseline fit plus timing urgency.
+Reason: strong market, company, and property fit indicate a high-quality lead.
 
 ## Output Requirements
 
@@ -581,8 +525,7 @@ For each lead, the system should output:
 
 - Market Fit score out of 45
 - Company Fit score out of 39
-- Property Fit score out of 6
-- Timing score out of 10
+- Property Fit score out of 16
 
 ### Why This Lead
 
@@ -593,14 +536,6 @@ Example:
 - This lead operates in a high-growth rental market.
 - The company appears to manage residential properties.
 - Public materials indicate tenant-facing leasing operations.
-
-### Why Now
-
-Only include when timing signals exist.
-
-Example:
-
-- Recent expansion news gives the SDR a timely reason to reach out.
 
 ### Sales Insights
 
@@ -614,7 +549,7 @@ Use:
 - company name
 - market insight
 - company fit insight
-- timing signal if available
+- property fit insight
 
 The LLM, if used, should only generate outreach from verified enrichment and score reasoning. It should not invent company facts.
 
@@ -645,8 +580,8 @@ flowchart TD
   backend --> enrich["Enrichment Services"]
   enrich --> datausa["DataUSA API"]
   enrich --> census["Census ACS API"]
-  enrich --> geocoder["Census Geocoder or Nominatim"]
-  enrich --> newsapi["NewsAPI"]
+  enrich --> geocoder["Census Geocoder + OSM/Nominatim"]
+  enrich --> serper["Serper Search API"]
   enrich --> website["Company Website Metadata"]
   enrich --> scoring["Deterministic Scoring Engine"]
   scoring --> outputs["Score, Reasons, Insights, Outreach"]
@@ -695,7 +630,8 @@ uv run python scripts/verify_company_fit.py \
   --company "Harbor Residential" \
   --email "maya@harborresidential.com" \
   --address "The Morrison Apartments, 123 Main St" \
-  --search-snippet "Harbor Residential manages apartment communities and 12,000 units with centralized leasing and resident communication teams."
+  --search-snippet "Harbor Residential manages apartment communities and 12,000 units with centralized leasing and resident communication teams." \
+  --property-snippet "The Morrison Apartments has 240 apartment units with available floor plans and now leasing."
 ```
 
 Use `--live` to search the company name with Serper, fetch the discovered website when available, and score the live evidence from the configured backend environment.
@@ -725,7 +661,6 @@ The Next.js app runs on `http://localhost:3000`.
 Backend:
 
 - `FRONTEND_ORIGIN`: allowed frontend origin for CORS
-- `NEWS_API_KEY`: optional for NewsAPI timing enrichment
 - `SERPER_API_KEY`: optional for company/property search snippet enrichment
 - `CENSUS_API_KEY`: optional for Census API access
 - `OPENAI_API_KEY`: optional for source-backed company micro-signal classification
@@ -739,7 +674,7 @@ Frontend:
 
 1. User uploads a CSV or loads sample lead data.
 2. User clicks `Run Analysis`.
-3. Backend normalizes lead location and enriches market, company, and timing data.
+3. Backend normalizes lead location and enriches market, company, and property data.
 4. Backend computes deterministic score and priority tier.
 5. Backend generates reasons, sales insights, outreach email, and follow-up suggestions.
 6. Frontend displays a ranked lead queue.
@@ -773,7 +708,7 @@ Show:
 - score breakdown
 - market insights
 - company insights
-- timing / Why Now
+- property fit insights
 - evidence snippets
 - outreach email
 - follow-up sequence
@@ -795,7 +730,7 @@ This satisfies the assignment's trigger-based automation requirement.
 A scheduled job could run daily at 9 AM to:
 
 - re-enrich existing open leads
-- refresh news and timing signals
+- refresh market, company, and property signals
 - re-rank the priority queue
 - surface leads requiring follow-up
 - generate the day's SDR action list
@@ -809,7 +744,7 @@ A scheduled job could run daily at 9 AM to:
 - tests for company-fit cap rules
 - tests for missing-data behavior
 - deterministic Market Fit tests for Austin-like city metrics
-- mocked API fixture tests for DataUSA, Census, NewsAPI, and company metadata enrichment
+- mocked API fixture tests for DataUSA, Census, Serper, OSM/Nominatim, and company metadata enrichment
 
 Run backend tests:
 
@@ -825,7 +760,7 @@ The scoring engine should be tested against the expected behavior cases:
 - strong market with sparse company data
 - weak market with strong property management company
 - strong market with irrelevant company
-- strong market with strong company and expansion news
+- strong market with strong company and clear residential property fit
 
 ### Frontend Tests
 
@@ -934,9 +869,9 @@ The output should help SDRs prioritize, understand the lead, and send better out
 ## Limitations
 
 - Free public APIs may have rate limits and incomplete coverage.
-- News signals are sparse for smaller property management companies.
 - City-level data is an imperfect proxy for property-level opportunity.
 - Company website metadata may be missing, generic, or hard to classify.
+- Search engines can return neighborhood, nearby, or different-building results, so property evidence is filtered by strict address/building identity before scoring.
 - U.S. market data sources may not support international leads well.
 
 ## Final Positioning
@@ -947,6 +882,6 @@ It is an inbound SDR copilot that replicates how a strong SDR evaluates leads un
 
 - where demand exists
 - whether the company is a relevant buyer
-- whether now is a good time to engage
+- whether the submitted property context fits the ICP
 - what message is most likely to resonate
 

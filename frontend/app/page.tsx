@@ -34,7 +34,7 @@ const sampleLeads = [
     location: "Charlotte, NC",
     score: 72,
     priority: "Medium",
-    reason: "Relevant operator, but current timing signal is limited.",
+    reason: "Relevant operator, but submitted property fit is less certain.",
   },
   {
     company: "Summit Dental Group",
@@ -69,7 +69,7 @@ export default function Home() {
                 <CardTitle>Scoring Model</CardTitle>
                 <CardDescription>Deterministic rubric, source-backed reasons.</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-4 gap-3 text-center">
+              <CardContent className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-2xl font-semibold">45</p>
                   <p className="text-xs text-muted-foreground">Market Fit</p>
@@ -79,12 +79,8 @@ export default function Home() {
                   <p className="text-xs text-muted-foreground">Company Fit</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold">6</p>
+                  <p className="text-2xl font-semibold">16</p>
                   <p className="text-xs text-muted-foreground">Property Fit</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">10</p>
-                  <p className="text-xs text-muted-foreground">Timing</p>
                 </div>
               </CardContent>
             </Card>
