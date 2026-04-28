@@ -11,6 +11,7 @@ from app.models import (
     ScoreSection,
     SignalAudit,
     MicroSignalClassification,
+    PropertyFitBreakdown,
 )
 from app.services.company import extract_company_signals
 
@@ -23,11 +24,16 @@ class _CompanyFitResult:
     breakdown: CompanyFitBreakdown
 
 
+@dataclass(frozen=True)
+class _PropertyFitResult:
+    section: ScoreSection
+    breakdown: PropertyFitBreakdown
+
+
 def score_lead(
     lead: LeadInput,
     market_metrics: MarketMetrics,
     company_text: str = "",
-    timing_signals: list[str] | None = None,
     company_enrichment: CompanyEnrichment | None = None,
 ) -> ScoreBreakdown:
     """Compute the deterministic MVP score.
@@ -42,31 +48,28 @@ def score_lead(
             lead=lead,
             website_snippet=company_text,
         )
-    timing_inputs = [*(timing_signals or []), *company_enrichment.timing_signals]
 
     market_fit = _score_market_fit(market_metrics)
     company_fit_result = _score_company_fit(company_enrichment)
-    property_fit = _score_property_fit(company_enrichment)
-    timing = _score_timing(timing_inputs)
+    property_fit_result = _score_property_fit(company_enrichment)
 
     final_score = (
         market_fit.score
         + company_fit_result.section.score
-        + property_fit.score
-        + timing.score
+        + property_fit_result.section.score
     )
     if company_fit_result.unrelated:
         final_score = min(final_score, 60)
 
     priority = "High" if final_score >= 40 else "Medium" if final_score >= 30 else "Low"
-    confidence = _confidence(market_metrics, company_enrichment, timing_inputs)
+    confidence = _confidence(market_metrics, company_enrichment)
 
     return ScoreBreakdown(
         market_fit=market_fit,
         company_fit=company_fit_result.section,
-        property_fit=property_fit,
-        timing=timing,
+        property_fit=property_fit_result.section,
         company_fit_breakdown=company_fit_result.breakdown,
+        property_fit_breakdown=property_fit_result.breakdown,
         final_score=final_score,
         priority=priority,
         company_fit_label=company_fit_result.label,
@@ -627,36 +630,408 @@ def _score_product_fit(
     return score, _audit("product_fit", enrichment, product_terms, parsed_value, bucket, score)
 
 
-def _score_property_fit(enrichment: CompanyEnrichment) -> ScoreSection:
-    positive = len(enrichment.property_signals)
-    negative = len(enrichment.negative_property_signals)
-    reasons: list[str] = []
-    clear_residential_terms = {
-        "apartment",
-        "apartments",
-        "communities",
-        "community",
-        "residences",
-        "residential",
-        "rental homes",
-        "single-family rental",
+def _score_property_fit(enrichment: CompanyEnrichment) -> _PropertyFitResult:
+    type_score, type_audit = _score_property_type(enrichment)
+    scale_score, scale_audit = _score_property_scale(enrichment)
+    leasing_score, leasing_audit = _score_property_leasing_activity(enrichment)
+    non_residential_gate = _is_non_residential_property_bucket(type_audit.interpreted_bucket)
+    if non_residential_gate:
+        scale_score = min(scale_score, 3)
+        leasing_score = min(leasing_score, 3)
+        scale_audit = _cap_property_audit(
+            scale_audit,
+            score=scale_score,
+            note="Capped because property type is non-residential.",
+        )
+        leasing_audit = _cap_property_audit(
+            leasing_audit,
+            score=leasing_score,
+            note="Capped because property type is non-residential.",
+        )
+    score_breakdown = {
+        "property_type": type_score,
+        "property_scale": scale_score,
+        "leasing_activity": leasing_score,
     }
+    audit = {
+        "property_type": type_audit,
+        "property_scale": scale_audit,
+        "leasing_activity": leasing_audit,
+    }
+    reasons = [
+        _property_reason("Property type", type_audit),
+        _property_reason("Property scale", scale_audit),
+        _property_reason("Leasing activity", leasing_audit),
+    ]
+    raw_total = sum(score_breakdown.values())
+    section_score = min(raw_total, 16)
+    if non_residential_gate:
+        section_score = min(section_score, 6)
+        reasons.append("Property Fit capped at 6 because property type is non-residential.")
+    return _PropertyFitResult(
+        section=ScoreSection(
+            score=section_score,
+            max_score=16,
+            reasons=reasons,
+        ),
+        breakdown=PropertyFitBreakdown(
+            score_breakdown=score_breakdown,
+            extraction_audit=audit,
+        ),
+    )
 
-    if set(enrichment.property_signals) & clear_residential_terms and negative == 0:
-        reasons.append("Submitted property context has clear residential rental signals.")
-        return ScoreSection(score=6, max_score=6, reasons=reasons)
-    if positive and negative == 0:
-        reasons.append("Submitted property context has a likely residential rental signal.")
-        return ScoreSection(score=4, max_score=6, reasons=reasons)
-    if positive and negative:
-        reasons.append("Property context has mixed residential and commercial signals, so fit is treated cautiously.")
-        return ScoreSection(score=3, max_score=6, reasons=reasons)
-    if negative:
-        reasons.append("Property context appears more commercial than residential rental.")
-        return ScoreSection(score=1, max_score=6, reasons=reasons)
 
-    reasons.append("Property relevance evidence was unavailable, so this subscore is neutral.")
-    return ScoreSection(score=3, max_score=6, reasons=reasons)
+def _score_property_type(enrichment: CompanyEnrichment) -> tuple[int, SignalAudit]:
+    classified = enrichment.property_classifications.get("property_type")
+    if _classification_has_validated_property_evidence(enrichment, classified):
+        bucket = _normalized_property_bucket("property_type", classified.interpreted_bucket)
+        if _is_non_residential_property_bucket(bucket):
+            score = _property_type_score(bucket)
+            return score, _audit_from_classification(classified, score, bucket)
+
+    osm_bucket = _osm_property_type_bucket(enrichment.osm_property_class, enrichment.osm_property_type)
+    if osm_bucket is not None:
+        score = _property_type_score(osm_bucket)
+        return score, SignalAudit(
+            raw_evidence=_osm_property_evidence(enrichment),
+            evidence_source="osm_nominatim",
+            parsed_value=_osm_property_parsed_value(enrichment),
+            interpreted_bucket=osm_bucket,
+            confidence="High",
+            classifier="rule_fallback",
+            score_contribution=score,
+        )
+
+    if _classification_has_validated_property_evidence(enrichment, classified):
+        bucket = _normalized_property_bucket("property_type", classified.interpreted_bucket)
+        score = _property_type_score(bucket)
+        return score, _audit_from_classification(classified, score, bucket)
+
+    positive = set(enrichment.property_signals)
+    negative = set(enrichment.negative_property_signals)
+    if positive and not negative:
+        bucket = "Multifamily" if positive & {"apartment", "apartments", "communities", "community"} else "Residential"
+        score = _property_type_score(bucket)
+        parsed_value = ", ".join(sorted(positive))
+    elif positive and negative:
+        bucket = "Mixed Use"
+        score = _property_type_score(bucket)
+        parsed_value = ", ".join(sorted(positive | negative))
+    elif negative:
+        bucket = "Commercial"
+        score = _property_type_score(bucket)
+        parsed_value = ", ".join(sorted(negative))
+    else:
+        bucket = "Unknown"
+        score = _property_type_score(bucket)
+        parsed_value = "No property-type evidence found"
+    return score, _property_fallback_audit("property_type", enrichment, parsed_value, bucket, score)
+
+
+def _osm_property_type_bucket(
+    osm_class: str | None,
+    osm_type: str | None,
+) -> str | None:
+    tokens = {
+        (osm_class or "").strip().lower().replace("_", " "),
+        (osm_type or "").strip().lower().replace("_", " "),
+    }
+    tokens.discard("")
+    generic = {"yes", "building", "buildings"}
+    meaningful = tokens - generic
+    if not meaningful:
+        return None
+
+    residential_high = {
+        "apartments",
+        "apartment",
+        "dormitory",
+        "student housing",
+        "residential apartments",
+    }
+    residential = {
+        "residential",
+        "house",
+        "detached",
+        "semidetached house",
+        "terrace",
+        "terraced house",
+        "bungalow",
+        "static caravan",
+    }
+    senior = {"retirement home", "nursing home", "assisted living"}
+    non_residential = {
+        "office",
+        "commercial",
+        "retail",
+        "industrial",
+        "warehouse",
+        "school",
+        "university",
+        "college",
+        "hospital",
+        "clinic",
+        "parking",
+        "car park",
+        "construction",
+        "service",
+        "civic",
+        "public",
+        "government",
+    }
+    if meaningful & residential_high:
+        return "Student Housing" if "dormitory" in meaningful or "student housing" in meaningful else "Multifamily"
+    if meaningful & senior:
+        return "Senior Living"
+    if meaningful & residential:
+        return "Residential"
+    if meaningful & non_residential:
+        return "Commercial"
+    return None
+
+
+def _osm_property_parsed_value(enrichment: CompanyEnrichment) -> str:
+    parts = [
+        part
+        for part in [enrichment.osm_property_class, enrichment.osm_property_type]
+        if part
+    ]
+    return " / ".join(parts) or "No OSM property type"
+
+
+def _osm_property_evidence(enrichment: CompanyEnrichment) -> str:
+    parsed = _osm_property_parsed_value(enrichment)
+    if enrichment.osm_display_name:
+        return f"OSM Nominatim returned {parsed} for {enrichment.osm_display_name}."
+    return f"OSM Nominatim returned {parsed}."
+
+
+def _score_property_scale(enrichment: CompanyEnrichment) -> tuple[int, SignalAudit]:
+    classified = enrichment.property_classifications.get("property_scale")
+    if _classification_has_validated_property_evidence(enrichment, classified):
+        text = f"{classified.raw_evidence} {classified.parsed_value}"
+        unit_count, phrase = _largest_unit_count(text)
+        bucket = _property_scale_bucket_from_units(unit_count) or _normalized_property_bucket(
+            "property_scale",
+            classified.interpreted_bucket,
+        )
+        score = _property_scale_score(bucket)
+        parsed_value = phrase or classified.parsed_value
+        audit = _audit_from_classification(classified, score, bucket)
+        return score, _calibrated_audit(audit, bucket=bucket, score=score, parsed_value=parsed_value)
+
+    source_text = _property_source_text(enrichment)
+    unit_count, phrase = _largest_unit_count(source_text)
+    bucket = _property_scale_bucket_from_units(unit_count)
+    if bucket is None:
+        bucket = "Small" if enrichment.property_signals else "Unknown"
+    score = _property_scale_score(bucket)
+    parsed_value = phrase or ("Address-level property signal" if enrichment.property_signals else "No property-scale evidence found")
+    return score, _property_fallback_audit("property_scale", enrichment, parsed_value, bucket, score)
+
+
+def _score_property_leasing_activity(enrichment: CompanyEnrichment) -> tuple[int, SignalAudit]:
+    classified = enrichment.property_classifications.get("leasing_activity")
+    if _classification_has_validated_property_evidence(enrichment, classified):
+        bucket = _normalized_property_bucket("leasing_activity", classified.interpreted_bucket)
+        score = _leasing_activity_score(bucket)
+        return score, _audit_from_classification(classified, score, bucket)
+
+    source_text = _property_source_text(enrichment).lower()
+    if any(term in source_text for term in ["now leasing", "leasing office", "available units", "apartments for rent", "schedule a tour"]):
+        bucket = "Active"
+    elif any(term in source_text for term in ["leasing", "for rent", "floor plans", "availability", "tour"]):
+        bucket = "Moderate"
+    elif enrichment.negative_property_signals and not enrichment.property_signals:
+        bucket = "None"
+    else:
+        bucket = "Unknown"
+    score = _leasing_activity_score(bucket)
+    parsed_value = _matched_property_phrase(source_text) or "No leasing-activity evidence found"
+    return score, _property_fallback_audit("leasing_activity", enrichment, parsed_value, bucket, score)
+
+
+def _classification_has_validated_property_evidence(
+    enrichment: CompanyEnrichment,
+    classification: MicroSignalClassification | None,
+) -> bool:
+    if classification is None:
+        return False
+    if not enrichment.property_search_snippets:
+        return True
+    index = _classification_search_snippet_index(classification.evidence_source)
+    if index is None or index >= len(enrichment.property_search_snippets):
+        return False
+    return enrichment.property_search_matches_address
+
+
+def _classification_search_snippet_index(evidence_source: str) -> int | None:
+    match = re.fullmatch(r"search_snippets\[(\d+)\]", evidence_source.strip())
+    if match is None:
+        return None
+    return int(match.group(1))
+
+
+def _property_type_score(bucket: str) -> int:
+    scores = {
+        "Multifamily": 6,
+        "Student Housing": 6,
+        "Senior Living": 6,
+        "Residential": 4,
+        "Single-Family Rental": 4,
+        "Mixed Use": 3,
+        "Commercial": 0,
+        "Non-Residential": 0,
+        "None": 0,
+        "Unknown": 3,
+    }
+    return scores.get(bucket, 3)
+
+
+def _is_non_residential_property_bucket(bucket: str) -> bool:
+    return bucket in {"Commercial", "Non-Residential", "None"}
+
+
+def _cap_property_audit(audit: SignalAudit, *, score: int, note: str) -> SignalAudit:
+    return SignalAudit(
+        raw_evidence=f"{audit.raw_evidence} {note}",
+        evidence_source=audit.evidence_source,
+        parsed_value=audit.parsed_value,
+        interpreted_bucket=audit.interpreted_bucket,
+        confidence=audit.confidence,
+        classifier=audit.classifier,
+        score_contribution=score,
+    )
+
+
+def _property_scale_score(bucket: str) -> int:
+    scores = {
+        "Large": 6,
+        "Medium": 5,
+        "Small": 3,
+        "Single Property": 3,
+        "None": 0,
+        "Unknown": 3,
+    }
+    return scores.get(bucket, 3)
+
+
+def _leasing_activity_score(bucket: str) -> int:
+    scores = {
+        "Active": 4,
+        "Moderate": 3,
+        "None": 0,
+        "Unknown": 2,
+    }
+    return scores.get(bucket, 2)
+
+
+def _property_scale_bucket_from_units(unit_count: int) -> str | None:
+    if unit_count >= 200:
+        return "Large"
+    if unit_count >= 50:
+        return "Medium"
+    if unit_count > 0:
+        return "Small"
+    return None
+
+
+def _normalized_property_bucket(signal: str, bucket: str) -> str:
+    normalized = bucket.strip()
+    synonyms = {
+        "property_type": {
+            "Apartment": "Multifamily",
+            "Apartments": "Multifamily",
+            "Multifamily Residential": "Multifamily",
+            "Student": "Student Housing",
+            "Senior": "Senior Living",
+            "Single Family": "Single-Family Rental",
+            "SFR": "Single-Family Rental",
+            "Commercial Real Estate": "Commercial",
+        },
+        "property_scale": {
+            "Very Large": "Large",
+            "High": "Large",
+            "Moderate": "Medium",
+            "Low": "Small",
+            "Single": "Single Property",
+        },
+        "leasing_activity": {
+            "High": "Active",
+            "Strong": "Active",
+            "Some": "Moderate",
+            "Low": "Moderate",
+            "No": "None",
+        },
+    }
+    return synonyms.get(signal, {}).get(normalized, normalized)
+
+
+def _property_reason(label: str, audit: SignalAudit) -> str:
+    return f"{label} classified as {audit.interpreted_bucket}; contributes {audit.score_contribution} points."
+
+
+def _property_fallback_audit(
+    signal: str,
+    enrichment: CompanyEnrichment,
+    parsed_value: str,
+    bucket: str,
+    score: int,
+) -> SignalAudit:
+    return SignalAudit(
+        raw_evidence=_property_raw_evidence(enrichment, parsed_value),
+        evidence_source=None,
+        parsed_value=parsed_value,
+        interpreted_bucket=bucket,
+        confidence=None,
+        classifier="rule_fallback",
+        score_contribution=score,
+    )
+
+
+def _property_raw_evidence(enrichment: CompanyEnrichment, parsed_value: str) -> str:
+    snippets = enrichment.property_search_snippets
+    if snippets:
+        joined = " | ".join(
+            _clean_property_evidence(f"{snippet.title or ''} {snippet.snippet}")
+            for snippet in snippets[:3]
+        )
+        return joined or parsed_value
+    if enrichment.property_signals or enrichment.negative_property_signals:
+        return f"Submitted address matched: {', '.join(enrichment.property_signals + enrichment.negative_property_signals)}"
+    return "No matched evidence; neutral fallback applied."
+
+
+def _property_source_text(enrichment: CompanyEnrichment) -> str:
+    return " ".join(
+        [
+            *(snippet.title or "" for snippet in enrichment.property_search_snippets),
+            *(snippet.snippet for snippet in enrichment.property_search_snippets),
+            *enrichment.property_signals,
+            *enrichment.negative_property_signals,
+        ]
+    )
+
+
+def _matched_property_phrase(source_text: str) -> str | None:
+    for phrase in [
+        "now leasing",
+        "leasing office",
+        "available units",
+        "apartments for rent",
+        "schedule a tour",
+        "floor plans",
+        "availability",
+        "for rent",
+        "leasing",
+    ]:
+        if phrase in source_text:
+            return phrase
+    return None
+
+
+def _clean_property_evidence(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()[:300]
 
 
 def _is_commercial_mismatch(enrichment: CompanyEnrichment) -> bool:
@@ -915,7 +1290,7 @@ def _scale_candidates(text: str) -> list[tuple[int, str]]:
     matches = re.finditer(
         r"\b((?:over|more than|approximately|about|around|nearly)?\s*"
         r"\d+(?:[,.]\d{3})*(?:\.\d+)?\s*[km]?)\+?\s+"
-        r"((?:(?:apartment|multifamily)\s+)?units|(?:single-family rental\s+)?homes|apartments|beds|buildings|communities|properties)\b",
+        r"((?:(?:apartment|multifamily)\s+)?units|(?:single-family rental\s+)?homes|apartments|beds|bedrooms|buildings|communities|properties)\b",
         text,
         flags=re.IGNORECASE,
     )
@@ -1085,34 +1460,9 @@ def _raw_evidence(enrichment: CompanyEnrichment, terms: list[str]) -> str:
     return ", ".join(terms)
 
 
-def _score_timing(timing_signals: list[str]) -> ScoreSection:
-    if not timing_signals:
-        return ScoreSection(
-            score=2,
-            max_score=10,
-            reasons=["No recent timing signal was found."],
-        )
-
-    joined = " ".join(timing_signals).lower()
-    strong_terms = ["expansion", "acquisition", "development", "launch", "hiring", "funding"]
-    if any(term in joined for term in strong_terms):
-        return ScoreSection(
-            score=8,
-            max_score=10,
-            reasons=["Recent activity provides a timely reason for outreach."],
-        )
-
-    return ScoreSection(
-        score=5,
-        max_score=10,
-        reasons=["Recent company or market activity provides a moderate timing signal."],
-    )
-
-
 def _confidence(
     metrics: MarketMetrics,
     company_enrichment: CompanyEnrichment,
-    timing_signals: list[str],
 ) -> str:
     classifier_confidences = [
         classification.confidence for classification in company_enrichment.classifications.values()
@@ -1141,7 +1491,12 @@ def _confidence(
     signals += sum(1 for value in metric_values if value is not None)
     signals += 1 if company_enrichment.source_text.strip() else 0
     signals += 1 if company_enrichment.search_snippets else 0
-    signals += 1 if timing_signals else 0
+    signals += 1 if (
+        company_enrichment.property_signals
+        or company_enrichment.negative_property_signals
+        or company_enrichment.property_search_snippets
+        or company_enrichment.property_classifications
+    ) else 0
 
     total_signal_slots = len(metric_values) + 3
     coverage = signals / float(total_signal_slots)

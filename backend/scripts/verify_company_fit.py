@@ -30,6 +30,12 @@ async def main() -> None:
         help="Offline search snippet. Can be passed multiple times.",
     )
     parser.add_argument(
+        "--property-snippet",
+        action="append",
+        default=[],
+        help="Offline property search snippet. Can be passed multiple times.",
+    )
+    parser.add_argument(
         "--live",
         action="store_true",
         help="Search the company name with Serper, fetch the discovered website, and score live evidence.",
@@ -56,19 +62,23 @@ async def main() -> None:
             SourceSnippet(source="Manual sample", title=f"{args.company} sample", snippet=snippet)
             for snippet in args.search_snippet
         ]
+        property_search_snippets = [
+            SourceSnippet(source="Manual property sample", title=args.address, snippet=snippet)
+            for snippet in args.property_snippet
+        ]
         enrichment = extract_company_signals(
             lead=lead,
             website_snippet=args.website_snippet,
             search_snippets=search_snippets,
+            property_search_snippets=property_search_snippets,
         )
-        evidence = search_snippets
+        evidence = [*search_snippets, *property_search_snippets]
         missing_data = []
 
     score = score_lead(
         lead=lead,
         market_metrics=MarketMetrics(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
     print(
@@ -83,7 +93,11 @@ async def main() -> None:
                     else None
                 ),
                 "property_fit": score.property_fit.model_dump(),
-                "timing": score.timing.model_dump(),
+                "property_fit_breakdown": (
+                    score.property_fit_breakdown.model_dump()
+                    if score.property_fit_breakdown
+                    else None
+                ),
                 "company_fit_label": score.company_fit_label,
                 "confidence": score.confidence,
                 "evidence": [item.model_dump() for item in evidence],

@@ -3,9 +3,14 @@ from types import SimpleNamespace
 
 from app.models import CompanyEnrichment, LeadInput, MarketMetrics, MicroSignalClassification, SourceSnippet
 from app.scoring import score_lead
-from app.services import company_classifier
-from app.services.company import _rank_source_snippets
+from app.services import company_classifier, property_classifier
+from app.services.company import (
+    _is_usable_property_evidence,
+    _rank_property_source_snippets,
+    _rank_source_snippets,
+)
 from app.services.company_classifier import build_evidence_packet, classify_company_signals
+from app.services.property_classifier import classify_property_signals
 
 
 def _lead() -> LeadInput:
@@ -43,6 +48,35 @@ def _payload(bucket: str = "Very High") -> dict:
             "evidence_source": "search_snippets[0]",
             "parsed_value": "leasing and resident communication teams",
             "interpreted_bucket": "Very Strong",
+            "confidence": "High",
+            "classifier": "openai_classifier",
+        },
+    }
+
+
+def _property_payload() -> dict:
+    return {
+        "property_type": {
+            "raw_evidence": "The Morrison Apartments offers apartment homes",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "apartment homes",
+            "interpreted_bucket": "Multifamily",
+            "confidence": "High",
+            "classifier": "openai_classifier",
+        },
+        "property_scale": {
+            "raw_evidence": "240 apartment units",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "240 apartment units",
+            "interpreted_bucket": "Large",
+            "confidence": "High",
+            "classifier": "openai_classifier",
+        },
+        "leasing_activity": {
+            "raw_evidence": "Now leasing with available units and floor plans",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "available units and floor plans",
+            "interpreted_bucket": "Active",
             "confidence": "High",
             "classifier": "openai_classifier",
         },
@@ -99,6 +133,39 @@ def test_openai_classifier_valid_payload_is_used(monkeypatch) -> None:
 
     assert missing is None
     assert classifications["leasing_volume"].interpreted_bucket == "Very High"
+
+
+def test_openai_property_classifier_valid_payload_is_used(monkeypatch) -> None:
+    async def fake_call_openai_classifier(**kwargs):
+        return _property_payload()
+
+    monkeypatch.setattr(
+        property_classifier,
+        "get_settings",
+        lambda: SimpleNamespace(openai_api_key="test-key", openai_model="test-model"),
+    )
+    monkeypatch.setattr(property_classifier, "_call_openai_classifier", fake_call_openai_classifier)
+
+    classifications, missing = asyncio.run(
+        classify_property_signals(
+            lead=_lead(),
+            search_snippets=[
+                SourceSnippet(
+                    source="Serper Property",
+                    title="The Morrison Apartments",
+                    snippet=(
+                        "The Morrison Apartments offers apartment homes with 240 apartment units. "
+                        "Now leasing with available units and floor plans."
+                    ),
+                )
+            ],
+        )
+    )
+
+    assert missing is None
+    assert classifications["property_type"].interpreted_bucket == "Multifamily"
+    assert classifications["property_scale"].interpreted_bucket == "Large"
+    assert classifications["leasing_activity"].interpreted_bucket == "Active"
 
 
 def test_openai_classifier_normalizes_product_fit_bucket_synonyms(monkeypatch) -> None:
@@ -185,6 +252,77 @@ def test_source_ranking_prioritizes_explicit_scale_evidence() -> None:
     ranked = _rank_source_snippets(snippets)
 
     assert ranked[0].title == "Greystar portfolio"
+
+
+def test_property_source_ranking_downweights_nearby_listing_noise() -> None:
+    lead = _lead()
+    lead.address = "1 Apple Park Way"
+    lead.city = "Cupertino"
+    lead.state = "CA"
+    snippets = [
+        SourceSnippet(
+            source="Serper Property",
+            title="Apartments near Apple Park",
+            snippet="Find apartments near 1 Apple Park Way with available units.",
+        ),
+        SourceSnippet(
+            source="Serper Property",
+            title="Apple Park",
+            snippet="1 Apple Park Way Cupertino CA office campus information.",
+        ),
+    ]
+
+    ranked = _rank_property_source_snippets(snippets, lead=lead)
+
+    assert ranked[0].title == "Apple Park"
+
+
+def test_property_evidence_rejects_neighborhood_listing_pages() -> None:
+    lead = _lead()
+    lead.address = "20 Hudson Yards"
+    lead.city = "New York"
+    lead.state = "NY"
+
+    assert not _is_usable_property_evidence(
+        "Apartments for Rent in Hudson Yards, New York. Browse all 203 apartments.",
+        lead,
+    )
+
+
+def test_property_evidence_allows_strong_building_signal_without_address() -> None:
+    lead = _lead()
+    lead.address = "Lamar Union, 1100 S Lamar Blvd"
+    lead.city = "Austin"
+    lead.state = "TX"
+
+    assert _is_usable_property_evidence(
+        "Lamar Union offers floor plans, amenities, pricing and availability, and schedule a tour.",
+        lead,
+    )
+
+
+def test_property_evidence_rejects_strong_signal_without_identity_match() -> None:
+    lead = _lead()
+    lead.address = "1 Apple Park Way"
+    lead.city = "Cupertino"
+    lead.state = "CA"
+
+    assert not _is_usable_property_evidence(
+        "Cupertino Park Center offers floor plans, amenities, pricing and availability.",
+        lead,
+    )
+
+
+def test_property_evidence_rejects_different_address_property_page() -> None:
+    lead = _lead()
+    lead.address = "1 Apple Park Way"
+    lead.city = "Cupertino"
+    lead.state = "CA"
+
+    assert not _is_usable_property_evidence(
+        "Cupertino Park Center at 20380 Stevens Creek Blvd offers floor plans and available units.",
+        lead,
+    )
 
 
 def test_openai_classifier_invalid_payload_falls_back_after_retry(monkeypatch) -> None:

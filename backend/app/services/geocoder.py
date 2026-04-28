@@ -42,6 +42,42 @@ class AddressGeography:
     resolution: AddressResolution
 
 
+@dataclass(frozen=True)
+class OSMAddressMetadata:
+    osm_class: str | None
+    osm_type: str | None
+    display_name: str | None
+    latitude: float | None
+    longitude: float | None
+
+
+async def fetch_osm_address_metadata(
+    address: str,
+    city: str,
+    state: str,
+) -> OSMAddressMetadata | None:
+    input_address = _full_address(address, city, state)
+    async with httpx.AsyncClient(timeout=15) as client:
+        try:
+            result = await _nominatim_search(client, input_address)
+        except (httpx.RequestError, httpx.HTTPStatusError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "Nominatim property metadata request failed: %s",
+                type(exc).__name__,
+                extra={**_COORD_FALLBACK_EXTRA, "stage_detail": "property_metadata"},
+            )
+            return None
+    if result is None:
+        return None
+    return OSMAddressMetadata(
+        osm_class=str(result.get("class") or "") or None,
+        osm_type=str(result.get("type") or "") or None,
+        display_name=str(result.get("display_name") or "") or None,
+        latitude=_safe_float_coord(result.get("lat")),
+        longitude=_safe_float_coord(result.get("lon")),
+    )
+
+
 async def geocode_address(address: str, city: str, state: str) -> AddressGeography | None:
     input_address = _full_address(address, city, state)
 
@@ -144,22 +180,9 @@ async def _coordinate_fallback(
     input_address: str,
 ) -> AddressGeography | None:
     try:
-        response = await client.get(
-            NOMINATIM_URL,
-            params={
-                "q": input_address,
-                "format": "jsonv2",
-                "limit": "1",
-                "addressdetails": "1",
-            },
-            headers={"User-Agent": USER_AGENT},
-        )
-        response.raise_for_status()
-        results = response.json()
-        if not results:
+        result = await _nominatim_search(client, input_address)
+        if result is None:
             return None
-
-        result = results[0]
         latitude = _safe_float_coord(result.get("lat"))
         longitude = _safe_float_coord(result.get("lon"))
         if latitude is None or longitude is None:
@@ -211,6 +234,26 @@ async def _coordinate_fallback(
             extra=_COORD_FALLBACK_EXTRA,
         )
         return None
+
+
+async def _nominatim_search(
+    client: httpx.AsyncClient,
+    input_address: str,
+) -> dict[str, Any] | None:
+    response = await client.get(
+        NOMINATIM_URL,
+        params={
+            "q": input_address,
+            "format": "jsonv2",
+            "limit": "1",
+            "addressdetails": "1",
+            "extratags": "1",
+        },
+        headers={"User-Agent": USER_AGENT},
+    )
+    response.raise_for_status()
+    results = response.json()
+    return results[0] if results else None
 
 
 def _geography_from_match(
