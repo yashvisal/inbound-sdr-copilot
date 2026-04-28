@@ -72,7 +72,6 @@ async def analyze_address(address: TestAddress) -> dict:
             "Example Property Management apartments leasing communities "
             "resident tenant operations"
         ),
-        timing_signals=[],
     )
 
     return {

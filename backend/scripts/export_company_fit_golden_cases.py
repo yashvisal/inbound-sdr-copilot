@@ -113,7 +113,6 @@ async def _run_case(case: dict[str, Any], *, live: bool) -> dict[str, Any]:
         lead=lead,
         market_metrics=MarketMetrics(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
     breakdown = score.company_fit_breakdown
@@ -134,7 +133,11 @@ async def _run_case(case: dict[str, Any], *, live: bool) -> dict[str, Any]:
             "company_fit_label": score.company_fit_label,
             "company_fit": score.company_fit.model_dump(),
             "property_fit": score.property_fit.model_dump(),
-            "timing": score.timing.model_dump(),
+            "property_fit_breakdown": (
+                score.property_fit_breakdown.model_dump()
+                if score.property_fit_breakdown
+                else None
+            ),
             "score_breakdown": breakdown.score_breakdown if breakdown else {},
             "extraction_audit": {
                 signal: signal_audit.model_dump()
@@ -151,8 +154,11 @@ async def _run_case(case: dict[str, Any], *, live: bool) -> dict[str, Any]:
             "product_fit": enrichment.product_fit_signals,
             "property": enrichment.property_signals,
             "negative_property": enrichment.negative_property_signals,
+            "property_classifications": {
+                signal: classification.model_dump()
+                for signal, classification in enrichment.property_classifications.items()
+            },
             "geographic_footprint": enrichment.geographic_footprint_signals,
-            "timing": enrichment.timing_signals,
         },
         "validation": validation,
     }

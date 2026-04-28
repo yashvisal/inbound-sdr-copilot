@@ -11,6 +11,8 @@ import httpx
 from app.config import get_settings
 from app.models import CompanyEnrichment, LeadInput, SourceSnippet
 from app.services.company_classifier import classify_company_signals
+from app.services.geocoder import fetch_osm_address_metadata
+from app.services.property_classifier import classify_property_signals
 
 logger = logging.getLogger(__name__)
 
@@ -124,22 +126,6 @@ GEOGRAPHIC_FOOTPRINT_TERMS = {
     "locations",
     "across",
 }
-TIMING_TERMS = {
-    "acquisition",
-    "acquired",
-    "expansion",
-    "expanded",
-    "development",
-    "groundbreaking",
-    "opened",
-    "opening",
-    "hiring",
-    "launch",
-    "launched",
-    "lease-up",
-    "new community",
-    "new property",
-}
 
 
 @dataclass(frozen=True)
@@ -202,6 +188,14 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
     evidence.extend(search_snippets)
     missing_data.extend(search_missing)
 
+    property_search_snippets, property_search_missing = await _fetch_property_search_snippets(lead)
+    evidence.extend(property_search_snippets)
+    missing_data.extend(property_search_missing)
+
+    osm_metadata = await fetch_osm_address_metadata(lead.address, lead.city, lead.state)
+    if osm_metadata is None:
+        missing_data.append("OSM property metadata was unavailable from Nominatim.")
+
     website_url = _website_url_from_search(search_snippets)
     website = None
     if website_url is None:
@@ -231,6 +225,10 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
         website_description=website.website_description if website else None,
         website_snippet=website.website_snippet if website else None,
         search_snippets=search_snippets,
+        property_search_snippets=property_search_snippets,
+        osm_property_class=osm_metadata.osm_class if osm_metadata else None,
+        osm_property_type=osm_metadata.osm_type if osm_metadata else None,
+        osm_display_name=osm_metadata.display_name if osm_metadata else None,
     )
     classifications, classifier_missing = await classify_company_signals(
         lead=lead,
@@ -243,6 +241,15 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
         enrichment.classifications = classifications
     if classifier_missing:
         missing_data.append(classifier_missing)
+
+    property_classifications, property_classifier_missing = await classify_property_signals(
+        lead=lead,
+        search_snippets=property_search_snippets,
+    )
+    if property_classifications:
+        enrichment.property_classifications = property_classifications
+    if property_classifier_missing:
+        missing_data.append(property_classifier_missing)
 
     return CompanyEnrichmentResult(
         enrichment=enrichment,
@@ -259,8 +266,21 @@ def extract_company_signals(
     website_description: str | None = None,
     website_snippet: str | None = None,
     search_snippets: list[SourceSnippet] | None = None,
+    property_search_snippets: list[SourceSnippet] | None = None,
+    osm_property_class: str | None = None,
+    osm_property_type: str | None = None,
+    osm_display_name: str | None = None,
 ) -> CompanyEnrichment:
     snippets = search_snippets or []
+    property_snippets = property_search_snippets or []
+    matching_property_snippets = [
+        snippet
+        for snippet in property_snippets
+        if _is_usable_property_evidence(
+            f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower(),
+            lead,
+        )
+    ]
     source_text = _clean_whitespace(
         " ".join(
             [
@@ -277,7 +297,17 @@ def extract_company_signals(
             ]
         )
     )
-    property_text = _clean_whitespace(lead.address)
+    property_text = _clean_whitespace(
+        " ".join(
+            [
+                lead.address,
+                lead.city,
+                lead.state,
+                *(snippet.title or "" for snippet in matching_property_snippets),
+                *(snippet.snippet for snippet in matching_property_snippets),
+            ]
+        )
+    )
 
     scale_signals = _matched_terms(source_text, LEASING_VOLUME_TERMS)
     scale_signals.extend(_unit_count_signals(source_text))
@@ -289,6 +319,11 @@ def extract_company_signals(
         website_description=website_description,
         website_snippet=website_snippet,
         search_snippets=snippets,
+        property_search_snippets=matching_property_snippets,
+        property_search_matches_address=bool(matching_property_snippets),
+        osm_property_class=osm_property_class,
+        osm_property_type=osm_property_type,
+        osm_display_name=osm_display_name,
         business_type_signals=_matched_terms(source_text, BUSINESS_TYPE_TERMS),
         leasing_volume_signals=_dedupe(scale_signals),
         operational_complexity_signals=_matched_terms(source_text, OPERATIONAL_COMPLEXITY_TERMS),
@@ -296,7 +331,6 @@ def extract_company_signals(
         property_signals=_matched_terms(property_text, RESIDENTIAL_PROPERTY_TERMS),
         negative_property_signals=_matched_terms(property_text, NON_RESIDENTIAL_PROPERTY_TERMS),
         geographic_footprint_signals=_matched_terms(source_text, GEOGRAPHIC_FOOTPRINT_TERMS),
-        timing_signals=_matched_terms(source_text, TIMING_TERMS),
         source_text=source_text,
     )
 
@@ -385,6 +419,63 @@ async def _fetch_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], 
     return _dedupe_source_snippets(_rank_source_snippets(snippets), limit=5), missing_data
 
 
+async def _fetch_property_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], list[str]]:
+    settings = get_settings()
+    if not settings.serper_api_key:
+        return [], ["Property search skipped because SERPER_API_KEY is not configured."]
+
+    query = (
+        f"{lead.address} {lead.city} {lead.state} "
+        "property apartments units floor plans availability leasing"
+    )
+    snippets: list[SourceSnippet] = []
+    missing_data: list[str] = []
+    async with httpx.AsyncClient(timeout=15) as client:
+        try:
+            response = await client.post(
+                "https://google.serper.dev/search",
+                headers={
+                    "X-API-KEY": settings.serper_api_key,
+                    "Content-Type": "application/json",
+                    "User-Agent": "inbound-sdr-copilot/0.1",
+                },
+                json={"q": query, "num": 5},
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            logger.exception("Serper property search failed for query %s", query)
+            return [], [f"Property search snippets were unavailable for query: {query}"]
+
+    for item in response.json().get("organic", [])[:5]:
+        snippet_text = _clean_whitespace(str(item.get("snippet", "")))
+        if not snippet_text:
+            continue
+        snippets.append(
+            SourceSnippet(
+                source="Serper Property",
+                title=str(item.get("title") or query),
+                url=str(item.get("link") or ""),
+                snippet=snippet_text,
+            )
+        )
+
+    if not snippets:
+        missing_data.append("Property search returned no usable snippets.")
+
+    ranked = _rank_property_source_snippets(snippets, lead=lead)
+    matching = [
+        snippet
+        for snippet in ranked
+        if _is_usable_property_evidence(
+            f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower(),
+            lead,
+        )
+    ]
+    if not matching and snippets:
+        missing_data.append("Property search returned snippets, but none matched the submitted address.")
+    return _dedupe_source_snippets(matching, limit=5), missing_data
+
+
 def _website_url_from_search(snippets: list[SourceSnippet]) -> str | None:
     for snippet in _rank_source_snippets(snippets):
         if not snippet.url:
@@ -433,6 +524,14 @@ def _rank_source_snippets(snippets: list[SourceSnippet]) -> list[SourceSnippet]:
     return sorted(snippets, key=_source_priority)
 
 
+def _rank_property_source_snippets(
+    snippets: list[SourceSnippet],
+    *,
+    lead: LeadInput | None = None,
+) -> list[SourceSnippet]:
+    return sorted(snippets, key=lambda snippet: _property_source_priority(snippet, lead=lead))
+
+
 def _source_priority(snippet: SourceSnippet) -> tuple[int, int]:
     text = f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower()
     domain = _domain_from_url(snippet.url)
@@ -443,6 +542,145 @@ def _source_priority(snippet: SourceSnippet) -> tuple[int, int]:
     if "about" in text or "portfolio" in text or "communities" in text:
         return (2, -len(snippet.snippet))
     return (3, -len(snippet.snippet))
+
+
+def _property_source_priority(
+    snippet: SourceSnippet,
+    *,
+    lead: LeadInput | None = None,
+) -> tuple[int, int]:
+    text = f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower()
+    noise_penalty = 5 if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text) else 0
+    exact_bonus = -2 if lead and _mentions_submitted_property(text, lead) else 0
+    property_level_bonus = -1 if lead and _has_strong_property_level_signal(text) else 0
+    if any(term in text for term in ["now leasing", "available units", "apartments for rent", "schedule a tour"]):
+        return (max(0, 0 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
+    if _has_scale_number(text):
+        return (max(0, 1 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
+    if any(term in text for term in ["apartments", "floor plans", "availability", "leasing"]):
+        return (max(0, 2 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
+    return (max(0, 3 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
+
+
+def _is_usable_property_evidence(text: str, lead: LeadInput) -> bool:
+    if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text):
+        return False
+    if _contains_different_street_address(text, lead):
+        return False
+    if _mentions_submitted_property(text, lead):
+        return True
+    return False
+
+
+def _mentions_submitted_property(text: str, lead: LeadInput) -> bool:
+    if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text):
+        return False
+    normalized_address = _normalize_address_token(lead.address)
+    normalized_text = _normalize_address_token(text)
+    street_number_match = re.search(r"\b\d+\b", lead.address)
+    street_number = street_number_match.group(0) if street_number_match else ""
+    street_name = _street_name_token(lead.address)
+    address_match = bool(normalized_address and normalized_address in normalized_text)
+    street_match = bool(street_number and street_name and street_number in text and street_name in normalized_text)
+    building_name = _building_name_token(lead.address)
+    building_match = bool(building_name and building_name in normalized_text)
+    return address_match or street_match or building_match
+
+
+def _normalize_address_token(value: str) -> str:
+    normalized = value.lower()
+    normalized = re.sub(r"\b(street|st)\b", "st", normalized)
+    normalized = re.sub(r"\b(avenue|ave)\b", "ave", normalized)
+    normalized = re.sub(r"\b(road|rd)\b", "rd", normalized)
+    normalized = re.sub(r"\b(parkway|pkwy)\b", "pkwy", normalized)
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _street_name_token(address: str) -> str:
+    normalized = _normalize_address_token(address)
+    parts = normalized.split()
+    if parts and parts[0].isdigit():
+        parts = parts[1:]
+    stop_tokens = {"new", "york", "ny", "tx", "il", "mi", "al", "ca", "fl", "austin", "plano", "chicago"}
+    tokens = [part for part in parts if part not in stop_tokens and not part.isdigit()]
+    return " ".join(tokens[:3])
+
+
+def _building_name_token(address: str) -> str:
+    first_part = address.split(",", maxsplit=1)[0].strip()
+    normalized = _normalize_address_token(first_part)
+    if not normalized or re.search(r"\b\d+\b", normalized):
+        return ""
+    street_suffixes = {"st", "street", "ave", "avenue", "rd", "road", "pkwy", "parkway", "blvd", "drive", "dr", "way", "lane", "ln"}
+    if set(normalized.split()) & street_suffixes:
+        return ""
+    return normalized if len(normalized) >= 5 else ""
+
+
+def _is_nearby_property_noise(text: str) -> bool:
+    return any(
+        phrase in text
+        for phrase in [
+            "apartments near",
+            "apartment near",
+            "nearby apartments",
+            "nearby rentals",
+            "near ",
+            "close to",
+        ]
+    )
+
+
+def _is_neighborhood_listing_page(text: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(apartments|condos|homes|rentals)\s+"
+            r"(?:for\s+rent\s+)?(?:in|near)\s+[^|,]+",
+            text,
+        )
+    ) or bool(
+        re.search(
+            r"\b\d+\s+(?:apartments|condos|homes|rentals)"
+            r"(?:\s+and\s+homes)?\s+for\s+rent\s+in\b",
+            text,
+        )
+    )
+
+
+def _has_strong_property_level_signal(text: str) -> bool:
+    return any(
+        phrase in text
+        for phrase in [
+            "floor plans",
+            "floorplans",
+            "unit pricing",
+            "pricing & floor plans",
+            "pricing and availability",
+            "square feet",
+            "sq ft",
+            "sqft",
+            "amenities",
+            "available units",
+            "now leasing",
+            "schedule a tour",
+            "leasing office",
+        ]
+    )
+
+
+def _contains_different_street_address(text: str, lead: LeadInput) -> bool:
+    submitted_number_match = re.search(r"\b\d+\b", lead.address)
+    submitted_number = submitted_number_match.group(0) if submitted_number_match else ""
+    if not submitted_number:
+        return False
+    for number in re.findall(r"\b\d{2,6}\b", text):
+        if number == submitted_number:
+            continue
+        nearby = text[max(0, text.find(number) - 40) : text.find(number) + 80]
+        if re.search(r"\b(st|street|ave|avenue|rd|road|pkwy|parkway|blvd|drive|dr|way|lane|ln)\b", nearby):
+            return True
+    return False
 
 
 def _has_scale_number(text: str) -> bool:

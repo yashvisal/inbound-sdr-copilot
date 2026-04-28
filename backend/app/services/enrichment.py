@@ -14,14 +14,12 @@ class EnrichmentBundle:
         self,
         market_metrics: MarketMetrics,
         company_enrichment: CompanyEnrichment,
-        timing_signals: list[str],
         evidence: list[SourceSnippet],
         missing_data: list[str],
         address_resolution: AddressResolution | None = None,
     ) -> None:
         self.market_metrics = market_metrics
         self.company_enrichment = company_enrichment
-        self.timing_signals = timing_signals
         self.evidence = evidence
         self.missing_data = missing_data
         self.address_resolution = address_resolution
@@ -37,7 +35,6 @@ async def enrich_lead(lead: LeadInput) -> EnrichmentBundle:
     return EnrichmentBundle(
         market_metrics=market.metrics,
         company_enrichment=company.enrichment,
-        timing_signals=company.enrichment.timing_signals,
         evidence=[*market.evidence, *company.evidence],
         missing_data=missing_data,
         address_resolution=market.address_resolution,
@@ -68,7 +65,6 @@ async def enrich_leads(
                 return EnrichmentBundle(
                     market_metrics=MarketMetrics(),
                     company_enrichment=company_enrichment,
-                    timing_signals=[],
                     evidence=[],
                     missing_data=["Lead enrichment failed unexpectedly."],
                     address_resolution=None,

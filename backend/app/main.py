@@ -35,7 +35,6 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
             lead=lead,
             market_metrics=enrichment.market_metrics,
             company_enrichment=enrichment.company_enrichment,
-            timing_signals=enrichment.timing_signals,
         )
         analysis = LeadAnalysis(
             lead=lead,

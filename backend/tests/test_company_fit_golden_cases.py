@@ -25,7 +25,6 @@ def _score_case(case: dict):
         lead=lead,
         market_metrics=MarketMetrics(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
 

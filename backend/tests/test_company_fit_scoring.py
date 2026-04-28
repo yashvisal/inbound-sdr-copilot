@@ -1,4 +1,4 @@
-from app.models import LeadInput, MarketMetrics, SourceSnippet
+from app.models import LeadInput, MarketMetrics, MicroSignalClassification, SourceSnippet
 from app.scoring import score_lead
 from app.services.company import extract_company_signals
 
@@ -54,11 +54,10 @@ def test_property_operator_with_volume_and_workflow_signals_scores_high() -> Non
         lead=lead,
         market_metrics=_strong_market(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
     assert score.company_fit.score >= 13
-    assert score.property_fit.score == 6
+    assert score.property_fit.score == 16
     assert score.company_fit_label == "Unclear fit"
     assert score.company_fit_breakdown is not None
     assert score.company_fit_breakdown.score_breakdown["leasing_volume"] == 4
@@ -74,7 +73,7 @@ def test_property_operator_with_volume_and_workflow_signals_scores_high() -> Non
     )
 
 
-def test_recent_activity_improves_timing_not_company_fit() -> None:
+def test_recent_activity_does_not_change_fit_scores() -> None:
     lead = _lead()
     base_enrichment = extract_company_signals(
         lead=lead,
@@ -95,7 +94,8 @@ def test_recent_activity_improves_timing_not_company_fit() -> None:
     active_score = score_lead(lead, _strong_market(), company_enrichment=active_enrichment)
 
     assert active_score.company_fit.score == base_score.company_fit.score
-    assert active_score.timing.score > base_score.timing.score
+    assert active_score.property_fit.score == base_score.property_fit.score
+    assert active_score.final_score == base_score.final_score
 
 
 def test_unrelated_company_is_capped_despite_strong_market() -> None:
@@ -114,7 +114,6 @@ def test_unrelated_company_is_capped_despite_strong_market() -> None:
         lead=lead,
         market_metrics=_strong_market(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
     assert score.final_score <= 60
@@ -129,10 +128,9 @@ def test_missing_company_data_defaults_to_neutral_property_fit() -> None:
         lead=lead,
         market_metrics=MarketMetrics(),
         company_enrichment=enrichment,
-        timing_signals=[],
     )
 
-    assert score.property_fit.score == 3
+    assert score.property_fit.score == 8
     assert "neutral" in score.property_fit.reasons[0]
 
 
@@ -186,4 +184,208 @@ def test_company_level_office_language_does_not_pollute_property_fit() -> None:
     score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
 
     assert "office" not in enrichment.negative_property_signals
-    assert score.property_fit.score == 6
+    assert score.property_fit.score == 16
+
+
+def test_property_fit_uses_structured_property_classifications() -> None:
+    lead = _lead(address="The Morrison Apartments, 123 Main St")
+    enrichment = extract_company_signals(lead=lead)
+    enrichment.property_classifications = {
+        "property_type": MicroSignalClassification(
+            raw_evidence="The Morrison Apartments offers apartment homes",
+            evidence_source="search_snippets[0]",
+            parsed_value="apartment homes",
+            interpreted_bucket="Multifamily",
+            confidence="High",
+        ),
+        "property_scale": MicroSignalClassification(
+            raw_evidence="240 apartment units",
+            evidence_source="search_snippets[0]",
+            parsed_value="240 apartment units",
+            interpreted_bucket="Medium",
+            confidence="High",
+        ),
+        "leasing_activity": MicroSignalClassification(
+            raw_evidence="Now leasing with available units",
+            evidence_source="search_snippets[0]",
+            parsed_value="available units",
+            interpreted_bucket="Active",
+            confidence="High",
+        ),
+    }
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit.score == 16
+    assert score.property_fit_breakdown is not None
+    assert score.property_fit_breakdown.score_breakdown == {
+        "property_type": 6,
+        "property_scale": 6,
+        "leasing_activity": 4,
+    }
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_scale"].interpreted_bucket
+        == "Large"
+    )
+
+
+def test_osm_property_type_overrides_noisy_search_classification() -> None:
+    lead = _lead(address="1 Apple Park Way, Cupertino, CA 95014")
+    enrichment = extract_company_signals(
+        lead=lead,
+        property_search_snippets=[
+            SourceSnippet(
+                source="Serper Property",
+                title="Apartments near Apple Park",
+                snippet="Find apartments near 1 Apple Park Way with available units.",
+            )
+        ],
+        osm_property_type="bench",
+        osm_display_name="1, Apple Park Way, Cupertino, California",
+    )
+    enrichment.property_classifications = {
+        "property_type": MicroSignalClassification(
+            raw_evidence="Apartments near Apple Park",
+            evidence_source="search_snippets[0]",
+            parsed_value="apartments",
+            interpreted_bucket="Multifamily",
+            confidence="High",
+        ),
+        "property_scale": MicroSignalClassification(
+            raw_evidence="500 apartments near Apple Park",
+            evidence_source="search_snippets[0]",
+            parsed_value="500 apartments",
+            interpreted_bucket="Large",
+            confidence="High",
+        ),
+        "leasing_activity": MicroSignalClassification(
+            raw_evidence="Apartments near Apple Park are available",
+            evidence_source="search_snippets[0]",
+            parsed_value="available apartments",
+            interpreted_bucket="Active",
+            confidence="High",
+        ),
+    }
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit.score == 8
+    assert score.property_fit_breakdown is not None
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].evidence_source
+        is None
+    )
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].interpreted_bucket
+        == "Unknown"
+    )
+
+
+def test_validated_commercial_search_overrides_osm_residential_type() -> None:
+    lead = _lead(address="5801 Tennyson Pkwy, Plano, TX 75024")
+    enrichment = extract_company_signals(
+        lead=lead,
+        property_search_snippets=[
+            SourceSnippet(
+                source="Serper Property",
+                title="5801 Tennyson Pkwy Plano TX 75024",
+                snippet="5801 Tennyson Pkwy is office space available for lease.",
+            )
+        ],
+        osm_property_type="house",
+        osm_display_name="5801 Tennyson Parkway, Plano, Texas",
+    )
+    enrichment.property_classifications = {
+        "property_type": MicroSignalClassification(
+            raw_evidence="5801 Tennyson Pkwy is office space",
+            evidence_source="search_snippets[0]",
+            parsed_value="office space",
+            interpreted_bucket="Commercial",
+            confidence="High",
+        ),
+        "leasing_activity": MicroSignalClassification(
+            raw_evidence="available for lease",
+            evidence_source="search_snippets[0]",
+            parsed_value="available for lease",
+            interpreted_bucket="Active",
+            confidence="High",
+        ),
+    }
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit.score <= 6
+    assert score.property_fit_breakdown is not None
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].evidence_source
+        == "search_snippets[0]"
+    )
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].interpreted_bucket
+        == "Commercial"
+    )
+
+
+def test_osm_generic_building_falls_back_to_structured_classification() -> None:
+    lead = _lead(address="The Morrison Apartments, 123 Main St")
+    enrichment = extract_company_signals(
+        lead=lead,
+        osm_property_class="building",
+        osm_property_type="yes",
+    )
+    enrichment.property_classifications = {
+        "property_type": MicroSignalClassification(
+            raw_evidence="The Morrison Apartments offers apartment homes",
+            evidence_source="search_snippets[0]",
+            parsed_value="apartment homes",
+            interpreted_bucket="Multifamily",
+            confidence="High",
+        )
+    }
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit_breakdown is not None
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].evidence_source
+        == "search_snippets[0]"
+    )
+    assert score.property_fit_breakdown.score_breakdown["property_type"] == 6
+
+
+def test_unclear_property_fit_uses_stable_neutral_defaults() -> None:
+    lead = _lead(company="Unknown Co", email="maya@gmail.com", address="123 Main St")
+    enrichment = extract_company_signals(lead=lead)
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit.score == 8
+    assert score.property_fit_breakdown is not None
+    assert score.property_fit_breakdown.score_breakdown == {
+        "property_type": 3,
+        "property_scale": 3,
+        "leasing_activity": 2,
+    }
+
+
+def test_commercial_property_search_evidence_scores_low_property_fit() -> None:
+    lead = _lead(address="100 Office Park Dr")
+    enrichment = extract_company_signals(
+        lead=lead,
+        property_search_snippets=[
+            SourceSnippet(
+                source="Serper Property",
+                title="100 Office Park Dr",
+                snippet="Class A office building with medical office suites and workplace amenities.",
+            )
+        ],
+    )
+
+    score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
+
+    assert score.property_fit.score <= 5
+    assert score.property_fit_breakdown is not None
+    assert (
+        score.property_fit_breakdown.extraction_audit["property_type"].interpreted_bucket
+        == "Commercial"
+    )

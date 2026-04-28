@@ -36,6 +36,11 @@ class CompanyEnrichment(BaseModel):
     website_description: str | None = None
     website_snippet: str | None = None
     search_snippets: list[SourceSnippet] = Field(default_factory=list)
+    property_search_snippets: list[SourceSnippet] = Field(default_factory=list)
+    property_search_matches_address: bool = False
+    osm_property_class: str | None = None
+    osm_property_type: str | None = None
+    osm_display_name: str | None = None
     business_type_signals: list[str] = Field(default_factory=list)
     leasing_volume_signals: list[str] = Field(default_factory=list)
     operational_complexity_signals: list[str] = Field(default_factory=list)
@@ -43,8 +48,8 @@ class CompanyEnrichment(BaseModel):
     property_signals: list[str] = Field(default_factory=list)
     negative_property_signals: list[str] = Field(default_factory=list)
     geographic_footprint_signals: list[str] = Field(default_factory=list)
-    timing_signals: list[str] = Field(default_factory=list)
     classifications: dict[str, "MicroSignalClassification"] = Field(default_factory=dict)
+    property_classifications: dict[str, "MicroSignalClassification"] = Field(default_factory=dict)
     source_text: str = Field(default="", exclude=True)
 
 
@@ -108,12 +113,17 @@ class CompanyFitBreakdown(BaseModel):
     extraction_audit: dict[str, SignalAudit] = Field(default_factory=dict)
 
 
+class PropertyFitBreakdown(BaseModel):
+    score_breakdown: dict[str, int] = Field(default_factory=dict)
+    extraction_audit: dict[str, SignalAudit] = Field(default_factory=dict)
+
+
 class ScoreBreakdown(BaseModel):
     market_fit: ScoreSection
     company_fit: ScoreSection
     property_fit: ScoreSection
-    timing: ScoreSection
     company_fit_breakdown: CompanyFitBreakdown | None = None
+    property_fit_breakdown: PropertyFitBreakdown | None = None
     final_score: int
     priority: Priority
     company_fit_label: CompanyFitLabel
@@ -129,7 +139,6 @@ class LeadAnalysis(BaseModel):
     evidence: list[SourceSnippet] = Field(default_factory=list)
     missing_data: list[str] = Field(default_factory=list)
     why_this_lead: list[str] = Field(default_factory=list)
-    why_now: str | None = None
     sales_insights: list[str] = Field(default_factory=list)
     outreach_email: str
     follow_ups: list[str]
