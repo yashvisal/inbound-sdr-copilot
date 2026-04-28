@@ -31,7 +31,6 @@ def test_austin_like_market_metrics_score_strong_market_fit() -> None:
         lead=lead,
         market_metrics=metrics,
         company_text="Harbor Residential property management apartments leasing communities",
-        timing_signals=[],
     )
 
     assert score.market_fit.score == 36
@@ -76,7 +75,6 @@ def test_small_housing_base_does_not_directly_penalize_market_fit() -> None:
         lead=lead,
         market_metrics=metrics,
         company_text="Harbor Residential property management apartments leasing communities",
-        timing_signals=[],
     )
 
     assert score.market_fit.score >= 30
@@ -110,7 +108,6 @@ def test_dense_urban_income_anomaly_is_treated_neutral() -> None:
         lead=lead,
         market_metrics=metrics,
         company_text="Harbor Residential property management apartments leasing communities",
-        timing_signals=[],
     )
 
     assert (
@@ -146,7 +143,6 @@ def test_low_renter_high_vacancy_mixed_use_pattern_gets_light_dampener() -> None
         lead=lead,
         market_metrics=metrics,
         company_text="Harbor Residential property management apartments leasing communities",
-        timing_signals=[],
     )
 
     assert (

@@ -29,7 +29,6 @@ async def main() -> None:
         lead=lead,
         market_metrics=market.metrics,
         company_text="Harbor Residential property management apartments leasing communities",
-        timing_signals=[],
     )
 
     print(
