@@ -29,6 +29,25 @@ class SourceSnippet(BaseModel):
     snippet: str
 
 
+class CompanyEnrichment(BaseModel):
+    domain: str | None = None
+    website_url: str | None = None
+    website_title: str | None = None
+    website_description: str | None = None
+    website_snippet: str | None = None
+    search_snippets: list[SourceSnippet] = Field(default_factory=list)
+    business_type_signals: list[str] = Field(default_factory=list)
+    leasing_volume_signals: list[str] = Field(default_factory=list)
+    operational_complexity_signals: list[str] = Field(default_factory=list)
+    product_fit_signals: list[str] = Field(default_factory=list)
+    property_signals: list[str] = Field(default_factory=list)
+    negative_property_signals: list[str] = Field(default_factory=list)
+    geographic_footprint_signals: list[str] = Field(default_factory=list)
+    timing_signals: list[str] = Field(default_factory=list)
+    classifications: dict[str, "MicroSignalClassification"] = Field(default_factory=dict)
+    source_text: str = Field(default="", exclude=True)
+
+
 class AddressResolution(BaseModel):
     confidence: AddressResolutionConfidence
     method: str
@@ -65,10 +84,36 @@ class ScoreSection(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class SignalAudit(BaseModel):
+    raw_evidence: str
+    evidence_source: str | None = None
+    parsed_value: str
+    interpreted_bucket: str
+    confidence: Literal["High", "Medium", "Low"] | None = None
+    classifier: Literal["openai_classifier", "rule_fallback"] = "rule_fallback"
+    score_contribution: int
+
+
+class MicroSignalClassification(BaseModel):
+    raw_evidence: str
+    evidence_source: str
+    parsed_value: str
+    interpreted_bucket: str
+    confidence: Literal["High", "Medium", "Low"]
+    classifier: Literal["openai_classifier", "rule_fallback"] = "openai_classifier"
+
+
+class CompanyFitBreakdown(BaseModel):
+    score_breakdown: dict[str, int] = Field(default_factory=dict)
+    extraction_audit: dict[str, SignalAudit] = Field(default_factory=dict)
+
+
 class ScoreBreakdown(BaseModel):
     market_fit: ScoreSection
     company_fit: ScoreSection
+    property_fit: ScoreSection
     timing: ScoreSection
+    company_fit_breakdown: CompanyFitBreakdown | None = None
     final_score: int
     priority: Priority
     company_fit_label: CompanyFitLabel
@@ -80,6 +125,7 @@ class LeadAnalysis(BaseModel):
     score: ScoreBreakdown
     address_resolution: AddressResolution | None = None
     market_metrics: MarketMetrics
+    company_enrichment: CompanyEnrichment | None = None
     evidence: list[SourceSnippet] = Field(default_factory=list)
     missing_data: list[str] = Field(default_factory=list)
     why_this_lead: list[str] = Field(default_factory=list)

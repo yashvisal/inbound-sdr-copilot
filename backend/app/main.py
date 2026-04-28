@@ -34,7 +34,7 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
         score = score_lead(
             lead=lead,
             market_metrics=enrichment.market_metrics,
-            company_text=enrichment.company_text,
+            company_enrichment=enrichment.company_enrichment,
             timing_signals=enrichment.timing_signals,
         )
         analysis = LeadAnalysis(
@@ -42,6 +42,7 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
             score=score,
             address_resolution=enrichment.address_resolution,
             market_metrics=enrichment.market_metrics,
+            company_enrichment=enrichment.company_enrichment,
             evidence=enrichment.evidence,
             missing_data=enrichment.missing_data,
             outreach_email="",
