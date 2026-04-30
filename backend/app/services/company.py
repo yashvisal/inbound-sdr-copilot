@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import html
@@ -188,13 +189,16 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
     evidence.extend(search_snippets)
     missing_data.extend(search_missing)
 
-    property_search_snippets, property_search_missing = await _fetch_property_search_snippets(lead)
-    evidence.extend(property_search_snippets)
-    missing_data.extend(property_search_missing)
-
     osm_metadata = await fetch_osm_address_metadata(lead.address, lead.city, lead.state)
     if osm_metadata is None:
         missing_data.append("OSM property metadata was unavailable from Nominatim.")
+
+    property_search_snippets, property_search_missing = await _fetch_property_search_snippets(
+        lead,
+        osm_display_name=osm_metadata.display_name if osm_metadata else None,
+    )
+    evidence.extend(property_search_snippets)
+    missing_data.extend(property_search_missing)
 
     website_url = _website_url_from_search(search_snippets)
     website = None
@@ -230,22 +234,27 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
         osm_property_type=osm_metadata.osm_type if osm_metadata else None,
         osm_display_name=osm_metadata.display_name if osm_metadata else None,
     )
-    classifications, classifier_missing = await classify_company_signals(
-        lead=lead,
-        website_title=website.website_title if website else None,
-        website_description=website.website_description if website else None,
-        website_snippet=website.website_snippet if website else None,
-        search_snippets=search_snippets,
+    (
+        (classifications, classifier_missing),
+        (property_classifications, property_classifier_missing),
+    ) = await asyncio.gather(
+        classify_company_signals(
+            lead=lead,
+            website_title=website.website_title if website else None,
+            website_description=website.website_description if website else None,
+            website_snippet=website.website_snippet if website else None,
+            search_snippets=search_snippets,
+        ),
+        classify_property_signals(
+            lead=lead,
+            search_snippets=property_search_snippets,
+        ),
     )
     if classifications:
         enrichment.classifications = classifications
     if classifier_missing:
         missing_data.append(classifier_missing)
 
-    property_classifications, property_classifier_missing = await classify_property_signals(
-        lead=lead,
-        search_snippets=property_search_snippets,
-    )
     if property_classifications:
         enrichment.property_classifications = property_classifications
     if property_classifier_missing:
@@ -279,6 +288,7 @@ def extract_company_signals(
         if _is_usable_property_evidence(
             f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower(),
             lead,
+            property_aliases=_property_aliases(lead, osm_display_name),
         )
     ]
     source_text = _clean_whitespace(
@@ -419,61 +429,120 @@ async def _fetch_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], 
     return _dedupe_source_snippets(_rank_source_snippets(snippets), limit=5), missing_data
 
 
-async def _fetch_property_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], list[str]]:
+async def _fetch_property_search_snippets(
+    lead: LeadInput,
+    *,
+    osm_display_name: str | None = None,
+) -> tuple[list[SourceSnippet], list[str]]:
     settings = get_settings()
     if not settings.serper_api_key:
         return [], ["Property search skipped because SERPER_API_KEY is not configured."]
 
-    query = (
-        f"{lead.address} {lead.city} {lead.state} "
-        "property apartments units floor plans availability leasing"
-    )
+    queries = _property_search_queries(lead, osm_display_name=osm_display_name)
     snippets: list[SourceSnippet] = []
     missing_data: list[str] = []
     async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            response = await client.post(
-                "https://google.serper.dev/search",
-                headers={
-                    "X-API-KEY": settings.serper_api_key,
-                    "Content-Type": "application/json",
-                    "User-Agent": "inbound-sdr-copilot/0.1",
-                },
-                json={"q": query, "num": 5},
-            )
-            response.raise_for_status()
-        except httpx.HTTPError:
-            logger.exception("Serper property search failed for query %s", query)
-            return [], [f"Property search snippets were unavailable for query: {query}"]
+        for query in queries:
+            try:
+                response = await client.post(
+                    "https://google.serper.dev/search",
+                    headers={
+                        "X-API-KEY": settings.serper_api_key,
+                        "Content-Type": "application/json",
+                        "User-Agent": "inbound-sdr-copilot/0.1",
+                    },
+                    json={"q": query, "num": 5},
+                )
+                response.raise_for_status()
+            except httpx.HTTPError:
+                logger.exception("Serper property search failed for query %s", query)
+                missing_data.append(f"Property search snippets were unavailable for query: {query}")
+                continue
 
-    for item in response.json().get("organic", [])[:5]:
-        snippet_text = _clean_whitespace(str(item.get("snippet", "")))
-        if not snippet_text:
-            continue
-        snippets.append(
-            SourceSnippet(
-                source="Serper Property",
-                title=str(item.get("title") or query),
-                url=str(item.get("link") or ""),
-                snippet=snippet_text,
-            )
-        )
+            for item in response.json().get("organic", [])[:5]:
+                snippet_text = _clean_whitespace(str(item.get("snippet", "")))
+                if not snippet_text:
+                    continue
+                snippets.append(
+                    SourceSnippet(
+                        source="Serper Property",
+                        title=str(item.get("title") or query),
+                        url=str(item.get("link") or ""),
+                        snippet=snippet_text,
+                    )
+                )
+
+    if len(missing_data) == len(queries):
+        return [], missing_data
 
     if not snippets:
         missing_data.append("Property search returned no usable snippets.")
 
-    ranked = _rank_property_source_snippets(snippets, lead=lead)
+    property_aliases = _property_aliases(lead, osm_display_name)
+    ranked = _rank_property_source_snippets(
+        _dedupe_source_snippets(snippets, limit=10),
+        lead=lead,
+        property_aliases=property_aliases,
+    )
     matching = [
         snippet
         for snippet in ranked
         if _is_usable_property_evidence(
             f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower(),
             lead,
+            property_aliases=property_aliases,
         )
     ]
     if not matching and snippets:
-        missing_data.append("Property search returned snippets, but none matched the submitted address.")
+        missing_data.append(
+            "Property search returned snippets, but none matched the submitted or resolved property."
+        )
     return _dedupe_source_snippets(matching, limit=5), missing_data
+
+
+def _property_search_queries(
+    lead: LeadInput,
+    *,
+    osm_display_name: str | None,
+) -> list[str]:
+    queries = [
+        (
+            f"{lead.address} {lead.city} {lead.state} "
+            "property apartments units floor plans availability leasing"
+        )
+    ]
+    for alias in _property_aliases(lead, osm_display_name):
+        queries.append(f"{alias} {lead.city} {lead.state} number of units apartments")
+        queries.append(
+            f"{alias} {lead.city} {lead.state} apartments units floor plans availability leasing"
+        )
+        queries.append(
+            f"{alias} {lead.address} {lead.city} {lead.state} floor plans availability"
+        )
+    return _dedupe(queries)[:4]
+
+
+def _property_aliases(
+    lead: LeadInput,
+    osm_display_name: str | None,
+) -> list[str]:
+    aliases: list[str] = []
+    building_name = _building_name_token(lead.address)
+    if building_name:
+        aliases.append(building_name)
+
+    if osm_display_name:
+        first_part = osm_display_name.split(",", maxsplit=1)[0].strip()
+        normalized_first_part = _normalize_address_token(first_part)
+        normalized_address = _normalize_address_token(lead.address)
+        if (
+            normalized_first_part
+            and normalized_first_part not in normalized_address
+            and not re.search(r"\b\d+\b", normalized_first_part)
+        ):
+            aliases.append(first_part)
+
+    return _dedupe([alias for alias in aliases if len(alias.strip()) >= 5])
 
 
 def _website_url_from_search(snippets: list[SourceSnippet]) -> str | None:
@@ -528,8 +597,16 @@ def _rank_property_source_snippets(
     snippets: list[SourceSnippet],
     *,
     lead: LeadInput | None = None,
+    property_aliases: list[str] | None = None,
 ) -> list[SourceSnippet]:
-    return sorted(snippets, key=lambda snippet: _property_source_priority(snippet, lead=lead))
+    return sorted(
+        snippets,
+        key=lambda snippet: _property_source_priority(
+            snippet,
+            lead=lead,
+            property_aliases=property_aliases,
+        ),
+    )
 
 
 def _source_priority(snippet: SourceSnippet) -> tuple[int, int]:
@@ -548,10 +625,15 @@ def _property_source_priority(
     snippet: SourceSnippet,
     *,
     lead: LeadInput | None = None,
+    property_aliases: list[str] | None = None,
 ) -> tuple[int, int]:
     text = f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower()
     noise_penalty = 5 if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text) else 0
-    exact_bonus = -2 if lead and _mentions_submitted_property(text, lead) else 0
+    exact_bonus = -2 if lead and _mentions_submitted_property(
+        text,
+        lead,
+        property_aliases=property_aliases,
+    ) else 0
     property_level_bonus = -1 if lead and _has_strong_property_level_signal(text) else 0
     if any(term in text for term in ["now leasing", "available units", "apartments for rent", "schedule a tour"]):
         return (max(0, 0 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
@@ -562,17 +644,27 @@ def _property_source_priority(
     return (max(0, 3 + noise_penalty + exact_bonus + property_level_bonus), -len(snippet.snippet))
 
 
-def _is_usable_property_evidence(text: str, lead: LeadInput) -> bool:
+def _is_usable_property_evidence(
+    text: str,
+    lead: LeadInput,
+    *,
+    property_aliases: list[str] | None = None,
+) -> bool:
     if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text):
         return False
     if _contains_different_street_address(text, lead):
         return False
-    if _mentions_submitted_property(text, lead):
+    if _mentions_submitted_property(text, lead, property_aliases=property_aliases):
         return True
     return False
 
 
-def _mentions_submitted_property(text: str, lead: LeadInput) -> bool:
+def _mentions_submitted_property(
+    text: str,
+    lead: LeadInput,
+    *,
+    property_aliases: list[str] | None = None,
+) -> bool:
     if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text):
         return False
     normalized_address = _normalize_address_token(lead.address)
@@ -584,7 +676,12 @@ def _mentions_submitted_property(text: str, lead: LeadInput) -> bool:
     street_match = bool(street_number and street_name and street_number in text and street_name in normalized_text)
     building_name = _building_name_token(lead.address)
     building_match = bool(building_name and building_name in normalized_text)
-    return address_match or street_match or building_match
+    alias_match = any(
+        _normalize_address_token(alias) in normalized_text
+        for alias in property_aliases or []
+        if _normalize_address_token(alias)
+    )
+    return address_match or street_match or building_match or alias_match
 
 
 def _normalize_address_token(value: str) -> str:

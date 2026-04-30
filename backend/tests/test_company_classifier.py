@@ -104,6 +104,24 @@ def test_build_evidence_packet_limits_and_dedupes_snippets() -> None:
     assert all(len(text) <= 400 for text in evidence.values())
 
 
+def test_property_evidence_can_match_osm_resolved_property_name() -> None:
+    lead = LeadInput(
+        name="Test Contact",
+        email="test@example.com",
+        company="Example Property Co",
+        address="214 Barton Springs Rd",
+        city="Austin",
+        state="TX",
+        country="US",
+    )
+
+    assert _is_usable_property_evidence(
+        "The Catherine Austin has floor plans, amenities, and available units.",
+        lead,
+        property_aliases=["The Catherine"],
+    )
+
+
 def test_openai_classifier_valid_payload_is_used(monkeypatch) -> None:
     async def fake_call_openai_classifier(**kwargs):
         return _payload()
