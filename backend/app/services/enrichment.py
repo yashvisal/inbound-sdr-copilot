@@ -94,6 +94,25 @@ async def enrich_leads(
     if not leads:
         return []
 
+    if max_concurrency <= 1:
+        results: list[EnrichmentBundle] = []
+        for lead in leads:
+            try:
+                results.append(await enrich_lead(lead))
+            except Exception:
+                logger.exception("Lead enrichment failed for %s", lead.email)
+                company_enrichment = extract_company_signals(lead=lead)
+                results.append(
+                    EnrichmentBundle(
+                        market_metrics=MarketMetrics(),
+                        company_enrichment=company_enrichment,
+                        evidence=[],
+                        missing_data=["Lead enrichment failed unexpectedly."],
+                        address_resolution=None,
+                    )
+                )
+        return results
+
     semaphore = asyncio.Semaphore(max(1, max_concurrency))
 
     async def run_one(lead: LeadInput) -> EnrichmentBundle:

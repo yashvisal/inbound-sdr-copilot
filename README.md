@@ -24,25 +24,6 @@ The system estimates:
 
 The scoring system is intentionally explainable, deterministic, and robust when public company data is incomplete.
 
-## Assignment Alignment
-
-The assessment asks for a working tool that:
-
-- takes lead inputs
-- enriches leads by calling at least two public APIs
-- generates useful outputs for sales reps, including lead scoring, outreach email, and sales insights
-- automates the process through either a schedule or a trigger
-- includes a project plan for testing and rollout in the sales organization
-
-This MVP satisfies those requirements through:
-
-- CSV upload, sample data, or manual lead intake
-- public API enrichment from demographic, housing, local, and company sources
-- deterministic scoring across market fit, company fit, and property fit
-- ranked lead queue and lead detail views
-- trigger-based analysis via a `Run Analysis` button
-- a rollout plan for SDR testing, pilot, and production expansion
-
 ## ICP Definition
 
 A strong EliseAI property management lead is a property management or real estate operator managing residential, especially multifamily, properties in markets with high leasing demand and meaningful operational complexity.
@@ -57,30 +38,6 @@ Key ICP traits:
 - activity in rental-heavy or growing markets
 
 The goal is not to perfectly calculate company size. The goal is to detect reliable public signals that suggest the company likely has enough leasing or resident communication volume to benefit from EliseAI.
-
-## Input Data
-
-Each lead should include:
-
-```json
-{
-  "name": "string",
-  "email": "string",
-  "company": "string",
-  "address": "string",
-  "city": "string",
-  "state": "string",
-  "country": "string"
-}
-```
-
-Contact name and email are primarily used for outreach generation. Scoring is based primarily on:
-
-- property location
-- company fit
-- submitted property context
-
-The MVP is optimized for U.S. leads because the selected demographic and housing APIs are U.S.-centric. Non-U.S. leads can still be accepted, but they should be flagged as having limited enrichment coverage.
 
 ## Core Assumptions
 
@@ -166,7 +123,7 @@ Company fit is the most important part of the score. When available, public webs
 Optional sources can improve the product but are not required for the MVP:
 
 - Walk Score API for walkability, transit score, and density proxies
-- Wikipedia API for large companies with structured public descriptions
+- Wikipedia API/News API for large companies with structured public descriptions
 - future CRM data for conversion feedback and account history
 
 ## Scoring Framework
@@ -180,11 +137,11 @@ ICP -> Market Fit -> Company Fit -> Property Fit -> Final Score -> Sales Outputs
 Final score is out of 100 points:
 
 
-| Category               | Points | Purpose                                                                 |
-| ---------------------- | ------ | ----------------------------------------------------------------------- |
-| Market Fit             | 45     | Estimate leasing demand at both city and neighborhood level             |
-| Company Fit            | 39     | Estimate leasing volume, operational complexity, and EliseAI product fit |
-| Property Fit           | 16     | Estimate whether the submitted property appears residential and relevant |
+| Category     | Points | Purpose                                                                  |
+| ------------ | ------ | ------------------------------------------------------------------------ |
+| Market Fit   | 45     | Estimate leasing demand at both city and neighborhood level              |
+| Company Fit  | 39     | Estimate leasing volume, operational complexity, and EliseAI product fit |
+| Property Fit | 16     | Estimate whether the submitted property appears residential and relevant |
 
 
 The lead opportunity is scored as the combination of market demand, account fit, and submitted-property fit. Market Fit remains the largest single category, while Company Fit and Property Fit together carry the majority of the score because buyer relevance and property relevance determine whether EliseAI is likely useful.
@@ -442,8 +399,8 @@ Final Score = Market Fit + Company Fit + Property Fit
 
 | Final Score | Priority        |
 | ----------- | --------------- |
-| 40-100      | High Priority   |
-| 30-39       | Medium Priority |
+| 75-100      | High Priority   |
+| 50-75       | Medium Priority |
 | 0-29        | Low Priority    |
 
 
@@ -590,281 +547,57 @@ flowchart TD
 
 
 
-## Local Development
-
-### Backend
-
-```bash
-cd backend
-cp .env.example .env
-uv sync
-uv run dev
-```
-
-The FastAPI server runs on `http://localhost:8000`.
-
-Useful endpoints:
-
-- `GET /health`
-- `POST /api/leads/analyze`
-
-Market Fit V2 can be verified without starting the server:
-
-```bash
-cd backend
-uv run python scripts/verify_market_fit.py
-```
-
-The verifier defaults to `301 W 2nd St, Austin, TX` and should return populated market metrics from Data USA and address-level Census Geocoder plus ACS 5-year enrichment, including city population, growth, city median gross rent, tract/block-group geography, median income, renter share, housing units, vacancy rate, access/urban proxy metrics, evidence snippets, and a Market Fit score.
-
-You can test another property address with:
-
-```bash
-uv run python scripts/verify_market_fit.py --address "PROPERTY ADDRESS" --city "Austin" --state "TX"
-```
-
-Company / Property Fit can also be verified without starting the server:
-
-```bash
-uv run python scripts/verify_company_fit.py \
-  --company "Harbor Residential" \
-  --email "maya@harborresidential.com" \
-  --address "The Morrison Apartments, 123 Main St" \
-  --search-snippet "Harbor Residential manages apartment communities and 12,000 units with centralized leasing and resident communication teams." \
-  --property-snippet "The Morrison Apartments has 240 apartment units with available floor plans and now leasing."
-```
-
-Use `--live` to search the company name with Serper, fetch the discovered website when available, and score the live evidence from the configured backend environment.
-
-Golden company-fit reports can be regenerated with:
-
-```bash
-uv run python scripts/export_company_fit_golden_cases.py
-uv run python scripts/export_company_fit_golden_cases.py --live
-```
-
-These write JSON and CSV artifacts to `backend/reports/` for offline and live review.
-
-### Frontend
-
-```bash
-cd frontend
-cp .env.example .env.local
-pnpm install
-pnpm dev
-```
-
-The Next.js app runs on `http://localhost:3000`.
-
-### Environment Variables
-
-Backend:
-
-- `FRONTEND_ORIGIN`: allowed frontend origin for CORS
-- `SERPER_API_KEY`: optional for company/property search snippet enrichment
-- `CENSUS_API_KEY`: optional for Census API access
-- `OPENAI_API_KEY`: optional for source-backed company micro-signal classification
-- `OPENAI_MODEL`: optional OpenAI classifier model override, default `gpt-4.1-mini`
-
-Frontend:
-
-- `NEXT_PUBLIC_API_BASE_URL`: FastAPI base URL
-
-## MVP User Workflow
-
-1. User uploads a CSV or loads sample lead data.
-2. User clicks `Run Analysis`.
-3. Backend normalizes lead location and enriches market, company, and property data.
-4. Backend computes deterministic score and priority tier.
-5. Backend generates reasons, sales insights, outreach email, and follow-up suggestions.
-6. Frontend displays a ranked lead queue.
-7. User opens a lead detail view to inspect evidence, score breakdown, and outreach.
-
-## UI Plan
-
-### Screen 1: Lead Intake
-
-- CSV upload
-- sample data option
-- `Run Analysis` button
-
-### Screen 2: Priority Queue
-
-Show ranked leads with:
-
-- company
-- contact
-- location
-- final score
-- priority tier
-- one-line reason
-
-Top leads should be visually highlighted.
-
-### Screen 3: Lead Detail View
-
-Show:
-
-- score breakdown
-- market insights
-- company insights
-- property fit insights
-- evidence snippets
-- outreach email
-- follow-up sequence
-
-## Automation Plan
-
-### MVP Trigger
-
-The MVP runs when:
-
-- a user uploads a CSV
-- a user selects sample data
-- a user clicks `Run Analysis`
-
-This satisfies the assignment's trigger-based automation requirement.
-
-### Future Scheduled Workflow
-
-A scheduled job could run daily at 9 AM to:
-
-- re-enrich existing open leads
-- refresh market, company, and property signals
-- re-rank the priority queue
-- surface leads requiring follow-up
-- generate the day's SDR action list
-
-## Testing Plan
-
-### Backend Tests
-
-- unit tests for each score component
-- tests for priority tier mapping
-- tests for company-fit cap rules
-- tests for missing-data behavior
-- deterministic Market Fit tests for Austin-like city metrics
-- mocked API fixture tests for DataUSA, Census, Serper, OSM/Nominatim, and company metadata enrichment
-
-Run backend tests:
-
-```bash
-cd backend
-uv run pytest -q
-```
-
-### Scenario Tests
-
-The scoring engine should be tested against the expected behavior cases:
-
-- strong market with sparse company data
-- weak market with strong property management company
-- strong market with irrelevant company
-- strong market with strong company and clear residential property fit
-
-### Frontend Tests
-
-- sample data renders correctly
-- analysis request displays loading, success, and error states
-- ranked queue sorts by score
-- detail view displays score breakdown, reasons, evidence, outreach, and follow-ups
-
-### Manual Demo Test
-
-Use 3-5 sample leads representing:
-
-- high-priority property management lead in a strong rental market
-- medium-priority lead with strong market but incomplete company data
-- medium-priority strong company in a weaker market
-- low-priority irrelevant company
-
 ## Sales Rollout Plan
 
-### Phase 1: MVP Testing
+### Phase 1: MVP Validation (Week 1)
 
-Timeline: week 1-2
+Goal: prove the system works.
 
 Activities:
 
-- run the tool on historical inbound leads
-- compare tool ranking against SDR judgment
-- review generated outreach for accuracy and usefulness
-- tune scoring thresholds and keyword weights
+- test with about 20-50 sample leads
+- compare model scores against SDR intuition
+- validate scoring accuracy, usefulness of insights, and quality of outreach emails
 
 Stakeholders:
 
-- SDRs
-- sales managers
-- RevOps
-- GTM engineering
+- 2-3 SDRs
+- 1 Sales Manager
 
-### Phase 2: SDR Pilot
+### Phase 2: Pilot (Week 2-3)
 
-Timeline: week 3-4
+Goal: integrate into the real workflow.
 
 Activities:
 
-- deploy to 2-3 SDRs
-- use the tool for new inbound lead review
-- collect qualitative feedback on prioritization and messaging
-- measure time saved during research and first-touch preparation
+- run the tool on real inbound leads as a daily batch
+- have SDRs review scores before outreach
+- use generated emails as a starting point
 
-Success metrics:
+Track:
 
-- reduction in SDR research time
-- faster time to first outreach
-- SDR satisfaction with insights and email drafts
-- higher meeting conversion rate for high-priority leads
+- time saved per lead
+- conversion rate versus baseline
+- SDR feedback
 
-### Phase 3: Production Expansion
+### Phase 3: Iteration (Week 3-4)
+
+Goal: improve signal quality.
 
 Activities:
 
-- integrate with CRM or lead source
-- add scheduled enrichment
-- track outcomes against scores
-- incorporate conversion feedback into scoring
-- expand outreach channels if useful
+- refine scoring weights, property classification, and outreach tone
+- review SDR feedback, edge cases, and mis-ranked leads
 
-Future enhancements:
+### Phase 4: Org Rollout (Week 4+)
 
-- Salesforce or HubSpot integration
-- daily re-enrichment
-- adaptive scoring based on conversion outcomes
-- multi-channel outreach support
-- A/B testing for outreach messaging
+Goal: full adoption.
 
-## Design Principles
+Activities:
 
-### Explainable
-
-Every score should have clear reasons and source-backed snippets where possible.
-
-### Robust
-
-The system should still produce useful output when company-level data is sparse.
-
-### Conservative
-
-The system should avoid overclaiming exact portfolio size, exact unit count, or buying intent unless directly found.
-
-### ICP-Aligned
-
-Scores should reflect EliseAI's likely value drivers: leasing demand, resident communication volume, and property operations complexity.
-
-### SDR-Useful
-
-The output should help SDRs prioritize, understand the lead, and send better outreach faster.
-
-## Non-Goals for MVP
-
-- CRM integration
-- real-time streaming ingestion
-- automated email sending
-- perfect company classification
-- exact unit or portfolio-size calculation
-- advanced machine learning models
-- fully autonomous sales engagement
+- integrate into the CRM workflow
+- auto-trigger enrichment on new inbound leads
+- add a feedback loop through the feature request and bug report buttons
 
 ## Limitations
 
@@ -873,15 +606,4 @@ The output should help SDRs prioritize, understand the lead, and send better out
 - Company website metadata may be missing, generic, or hard to classify.
 - Search engines can return neighborhood, nearby, or different-building results, so property evidence is filtered by strict address/building identity before scoring.
 - U.S. market data sources may not support international leads well.
-
-## Final Positioning
-
-This is not just a lead enrichment tool.
-
-It is an inbound SDR copilot that replicates how a strong SDR evaluates leads under uncertainty:
-
-- where demand exists
-- whether the company is a relevant buyer
-- whether the submitted property context fits the ICP
-- what message is most likely to resonate
 

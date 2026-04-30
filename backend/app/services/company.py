@@ -382,13 +382,6 @@ async def _fetch_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], 
         lead.company,
         f"{lead.company} real estate portfolio units",
         f"{lead.company} apartment units manages",
-        f"{lead.company} property management portfolio size",
-        f"{lead.company} units portfolio",
-        f"{lead.company} number of units",
-        f"{lead.company} portfolio size",
-        f"{lead.company} number of properties",
-        f"{lead.company} property management scale",
-        f"{lead.company} recent expansion acquisition new development",
     ]
     snippets: list[SourceSnippet] = []
     missing_data: list[str] = []
@@ -519,7 +512,7 @@ def _property_search_queries(
         queries.append(
             f"{alias} {lead.address} {lead.city} {lead.state} floor plans availability"
         )
-    return _dedupe(queries)[:4]
+    return _dedupe(queries)[:2]
 
 
 def _property_aliases(
