@@ -108,7 +108,6 @@ def _build_context(lead: LeadInput, analysis: LeadAnalysis) -> dict[str, Any]:
         "lead": {
             "name": lead.name,
             "company": lead.company,
-            "email": str(lead.email),
             "property_address": lead.address,
             "city": lead.city,
             "state": lead.state,

@@ -40,4 +40,4 @@ async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
 async def generate_lead_outreach(
     payload: OutreachGenerationRequest,
 ) -> OutreachGenerationResponse:
-    return await generate_outreach(payload.lead, payload.analysis)
+    return await generate_outreach(payload.analysis.lead, payload.analysis)

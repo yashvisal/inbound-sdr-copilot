@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, model_validator
 
 
 Priority = Literal["High", "Medium", "Low"]
@@ -261,6 +261,12 @@ class LeadAnalysis(BaseModel):
 class OutreachGenerationRequest(BaseModel):
     lead: LeadInput
     analysis: LeadAnalysis
+
+    @model_validator(mode="after")
+    def lead_matches_analysis(self) -> "OutreachGenerationRequest":
+        if self.lead != self.analysis.lead:
+            raise ValueError("lead must match analysis.lead")
+        return self
 
 
 class OutreachGenerationResponse(BaseModel):

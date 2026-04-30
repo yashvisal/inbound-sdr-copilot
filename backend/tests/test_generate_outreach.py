@@ -12,6 +12,7 @@ from app.models import (
     LeadAnalysis,
     LeadInput,
     MarketMetrics,
+    OutreachGenerationRequest,
     OutreachGenerationResponse,
     ScoreBreakdown,
     ScoreSection,
@@ -142,6 +143,20 @@ def test_generate_outreach_endpoint_returns_model_payload(monkeypatch) -> None:
     assert len(body["sales_insights"]) == 4
     assert body["personalized_email"]
     assert "persona" not in body
+
+
+def test_outreach_request_rejects_mismatched_leads() -> None:
+    lead = _lead()
+    mismatched_lead = lead.model_copy(update={"email": "other@harborresidential.com"})
+
+    with pytest.raises(ValueError, match="lead must match analysis.lead"):
+        OutreachGenerationRequest(lead=mismatched_lead, analysis=_analysis())
+
+
+def test_build_context_does_not_include_lead_email() -> None:
+    context = outreach_service._build_context(_lead(), _analysis())
+
+    assert "email" not in context["lead"]
 
 
 def test_generate_outreach_parses_responses_payload(monkeypatch) -> None:
