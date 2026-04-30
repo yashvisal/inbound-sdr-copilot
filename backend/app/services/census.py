@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,7 +11,7 @@ from app.services.geo import STATE_NAME_BY_FIPS, normalize_place_name, state_fip
 ACS_YEAR = "2023"
 ACS_BASE_URL = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
 
-ACS_MARKET_VARIABLES = [
+ACS_CORE_MARKET_VARIABLES = [
     "NAME",
     "B19013_001E",  # Median household income
     "B25064_001E",  # Median gross rent
@@ -19,12 +20,24 @@ ACS_MARKET_VARIABLES = [
     "B25002_003E",  # Vacant housing units
     "B25003_001E",  # Tenure: occupied housing units
     "B25003_003E",  # Renter-occupied housing units
+]
+ACS_ACCESS_VARIABLES = [
+    "NAME",
     "B08201_001E",  # Vehicles available: total households
     "B08201_002E",  # No vehicle available
     "B08301_001E",  # Means of transportation to work: total workers
     "B08301_010E",  # Public transportation
     "B08301_019E",  # Walked
 ]
+ACS_MARKET_VARIABLES = [
+    *ACS_CORE_MARKET_VARIABLES,
+    *[variable for variable in ACS_ACCESS_VARIABLES if variable != "NAME"],
+]
+ACS_PLACE_MARKET_VARIABLES = [
+    "NAME",
+    "B25064_001E",  # Median gross rent
+]
+ACS_PLACE_LOOKUP_VARIABLES = ["NAME"]
 
 
 @dataclass(frozen=True)
@@ -41,7 +54,7 @@ async def fetch_place_market_by_geoid(place_geoid: str) -> CensusPlaceMarket | N
         return None
     state = place_geoid[:2]
     place = place_geoid[2:]
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         record = await _fetch_place_acs_record(client, state, place)
     if record is None:
         return None
@@ -79,10 +92,29 @@ async def fetch_neighborhood_market(
     """
 
     effective_block_group = block_group
-    async with httpx.AsyncClient(timeout=20) as client:
-        primary = await _fetch_acs_record(client, state_fips, county_fips, tract, block_group)
+    async with httpx.AsyncClient(timeout=30) as client:
+        primary_variables = (
+            ACS_CORE_MARKET_VARIABLES
+            if block_group is not None
+            else ACS_MARKET_VARIABLES
+        )
+        primary = await _fetch_acs_record(
+            client,
+            state_fips,
+            county_fips,
+            tract,
+            block_group,
+            variables=primary_variables,
+        )
         if primary is None and block_group is not None:
-            primary = await _fetch_acs_record(client, state_fips, county_fips, tract, None)
+            primary = await _fetch_acs_record(
+                client,
+                state_fips,
+                county_fips,
+                tract,
+                None,
+                variables=ACS_MARKET_VARIABLES,
+            )
             effective_block_group = None
         if primary is None:
             return None
@@ -90,7 +122,14 @@ async def fetch_neighborhood_market(
         metrics = _metrics_from_record(primary)
 
         if effective_block_group is not None:
-            tract_record = await _fetch_acs_record(client, state_fips, county_fips, tract, None)
+            tract_record = await _fetch_acs_record(
+                client,
+                state_fips,
+                county_fips,
+                tract,
+                None,
+                variables=ACS_MARKET_VARIABLES,
+            )
             tract_metrics = _metrics_from_record(tract_record) if tract_record else None
         else:
             tract_metrics = metrics
@@ -151,23 +190,8 @@ async def fetch_place_market(city: str, state: str) -> CensusPlaceMarket | None:
     if fips is None:
         return None
 
-    settings = get_settings()
-    params: dict[str, str] = {
-        "get": ",".join(ACS_MARKET_VARIABLES),
-        "for": "place:*",
-        "in": f"state:{fips}",
-    }
-    if settings.census_api_key:
-        params["key"] = settings.census_api_key
-
-    async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.get(
-            ACS_BASE_URL,
-            params=params,
-            headers={"User-Agent": "inbound-sdr-copilot/0.1"},
-        )
-        response.raise_for_status()
-        rows = response.json()
+    async with httpx.AsyncClient(timeout=30) as client:
+        rows = await _fetch_place_lookup_rows(client, fips)
 
     if len(rows) < 2:
         return None
@@ -185,7 +209,8 @@ async def fetch_place_market(city: str, state: str) -> CensusPlaceMarket | None:
             continue
 
         place_fips = str(record["place"])
-        metrics = _metrics_from_record(record)
+        place_record = await _fetch_place_acs_record(client, fips, place_fips)
+        metrics = _metrics_from_record(place_record) if place_record else MarketMetrics()
         return CensusPlaceMarket(
             name=name,
             state_fips=fips,
@@ -229,10 +254,12 @@ async def _fetch_acs_record(
     county_fips: str,
     tract: str,
     block_group: str | None,
+    *,
+    variables: list[str],
 ) -> dict[str, Any] | None:
     settings = get_settings()
     params: dict[str, str] = {
-        "get": ",".join(ACS_MARKET_VARIABLES),
+        "get": ",".join(variables),
         "for": f"block group:{block_group}" if block_group else f"tract:{tract}",
         "in": (
             f"state:{state_fips} county:{county_fips} tract:{tract}"
@@ -243,15 +270,7 @@ async def _fetch_acs_record(
     if settings.census_api_key:
         params["key"] = settings.census_api_key
 
-    response = await client.get(
-        ACS_BASE_URL,
-        params=params,
-        headers={"User-Agent": "inbound-sdr-copilot/0.1"},
-    )
-    if response.status_code == 204:
-        return None
-    response.raise_for_status()
-    rows = response.json()
+    rows = await _fetch_census_rows(client, params)
 
     if len(rows) < 2:
         return None
@@ -265,26 +284,66 @@ async def _fetch_place_acs_record(
 ) -> dict[str, Any] | None:
     settings = get_settings()
     params: dict[str, str] = {
-        "get": ",".join(ACS_MARKET_VARIABLES),
+        "get": ",".join(ACS_PLACE_MARKET_VARIABLES),
         "for": f"place:{place_fips}",
         "in": f"state:{state_fips}",
     }
     if settings.census_api_key:
         params["key"] = settings.census_api_key
 
-    response = await client.get(
-        ACS_BASE_URL,
-        params=params,
-        headers={"User-Agent": "inbound-sdr-copilot/0.1"},
-    )
-    if response.status_code == 204:
-        return None
-    response.raise_for_status()
-    rows = response.json()
+    rows = await _fetch_census_rows(client, params)
 
     if len(rows) < 2:
         return None
     return dict(zip(rows[0], rows[1], strict=False))
+
+
+async def _fetch_place_lookup_rows(
+    client: httpx.AsyncClient,
+    state_fips: str,
+) -> list[list[Any]]:
+    settings = get_settings()
+    params: dict[str, str] = {
+        "get": ",".join(ACS_PLACE_LOOKUP_VARIABLES),
+        "for": "place:*",
+        "in": f"state:{state_fips}",
+    }
+    if settings.census_api_key:
+        params["key"] = settings.census_api_key
+
+    return await _fetch_census_rows(client, params)
+
+
+async def _fetch_census_rows(
+    client: httpx.AsyncClient,
+    params: dict[str, str],
+) -> list[list[Any]]:
+    retryable_errors = (
+        httpx.ConnectError,
+        httpx.ConnectTimeout,
+        httpx.ReadTimeout,
+        httpx.RemoteProtocolError,
+    )
+    for attempt in range(3):
+        try:
+            response = await client.get(
+                ACS_BASE_URL,
+                params=params,
+                headers={"User-Agent": "inbound-sdr-copilot/0.1"},
+            )
+            if response.status_code == 204:
+                return []
+            if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
+                await asyncio.sleep(0.5 * (attempt + 1))
+                continue
+            response.raise_for_status()
+            return response.json()
+        except retryable_errors:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(0.5 * (attempt + 1))
+
+    return []
 
 
 def _to_int(value: Any) -> int | None:

@@ -2,10 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.models import AnalyzeLeadsRequest, AnalyzeLeadsResponse, LeadAnalysis
-from app.outreach import attach_sales_outputs
-from app.scoring import score_lead
-from app.services.enrichment import enrich_leads
+from app.models import AnalyzeLeadsRequest, AnalyzeLeadsResponse
+from app.services.lead_processing import process_leads
 
 settings = get_settings()
 
@@ -27,27 +25,6 @@ async def health() -> dict[str, str]:
 
 @app.post("/api/leads/analyze", response_model=AnalyzeLeadsResponse)
 async def analyze_leads(payload: AnalyzeLeadsRequest) -> AnalyzeLeadsResponse:
-    enrichments = await enrich_leads(payload.leads)
-    analyses: list[LeadAnalysis] = []
-
-    for lead, enrichment in zip(payload.leads, enrichments, strict=True):
-        score = score_lead(
-            lead=lead,
-            market_metrics=enrichment.market_metrics,
-            company_enrichment=enrichment.company_enrichment,
-        )
-        analysis = LeadAnalysis(
-            lead=lead,
-            score=score,
-            address_resolution=enrichment.address_resolution,
-            market_metrics=enrichment.market_metrics,
-            company_enrichment=enrichment.company_enrichment,
-            evidence=enrichment.evidence,
-            missing_data=enrichment.missing_data,
-            outreach_email="",
-            follow_ups=[],
-        )
-        analyses.append(attach_sales_outputs(analysis))
-
+    analyses = await process_leads(payload.to_lead_inputs())
     analyses.sort(key=lambda item: item.score.final_score, reverse=True)
     return AnalyzeLeadsResponse(leads=analyses)

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 Priority = Literal["High", "Medium", "Low"]
@@ -9,17 +9,131 @@ AddressResolutionConfidence = Literal["High", "Medium", "Low", "Unresolved"]
 
 
 class LeadInput(BaseModel):
-    name: str = Field(..., examples=["Jordan Lee"])
-    email: EmailStr = Field(..., examples=["jordan@examplepm.com"])
-    company: str = Field(..., examples=["Example Property Management"])
-    address: str = Field(..., examples=["123 Main St"])
-    city: str = Field(..., examples=["Austin"])
-    state: str = Field(..., examples=["TX"])
-    country: str = Field(default="US", examples=["US"])
+    name: str = Field(
+        ...,
+        validation_alias=AliasChoices("name", "Name"),
+        examples=["Jordan Lee"],
+    )
+    email: EmailStr = Field(
+        ...,
+        validation_alias=AliasChoices(
+            "email",
+            "Email Address",
+            "email_address",
+            "emailAddress",
+        ),
+        examples=["jordan@examplepm.com"],
+    )
+    company: str = Field(
+        ...,
+        validation_alias=AliasChoices("company", "Company"),
+        examples=["Example Property Management"],
+    )
+    address: str = Field(
+        ...,
+        validation_alias=AliasChoices(
+            "address",
+            "Property Address",
+            "property_address",
+            "propertyAddress",
+        ),
+        examples=["123 Main St"],
+    )
+    city: str = Field(
+        ...,
+        validation_alias=AliasChoices("city", "City"),
+        examples=["Austin"],
+    )
+    state: str = Field(
+        ...,
+        validation_alias=AliasChoices("state", "State"),
+        examples=["TX"],
+    )
+    country: str = Field(
+        default="US",
+        validation_alias=AliasChoices("country", "Country"),
+        examples=["US"],
+    )
+
+
+class PersonInput(BaseModel):
+    name: str = Field(
+        ...,
+        validation_alias=AliasChoices("name", "Name"),
+        examples=["Jordan Lee"],
+    )
+    email: EmailStr = Field(
+        ...,
+        validation_alias=AliasChoices(
+            "email",
+            "Email Address",
+            "email_address",
+            "emailAddress",
+        ),
+        examples=["jordan@examplepm.com"],
+    )
+    company: str = Field(
+        ...,
+        validation_alias=AliasChoices("company", "Company"),
+        examples=["Example Property Management"],
+    )
+
+
+class BuildingInput(BaseModel):
+    address: str = Field(
+        ...,
+        validation_alias=AliasChoices(
+            "address",
+            "Property Address",
+            "property_address",
+            "propertyAddress",
+        ),
+        examples=["123 Main St"],
+    )
+    city: str = Field(
+        ...,
+        validation_alias=AliasChoices("city", "City"),
+        examples=["Austin"],
+    )
+    state: str = Field(
+        ...,
+        validation_alias=AliasChoices("state", "State"),
+        examples=["TX"],
+    )
+    country: str = Field(
+        default="US",
+        validation_alias=AliasChoices("country", "Country"),
+        examples=["US"],
+    )
+
+
+class NestedLeadInput(BaseModel):
+    person: PersonInput
+    building: BuildingInput
+
+    def to_lead_input(self) -> LeadInput:
+        return LeadInput(
+            name=self.person.name,
+            email=self.person.email,
+            company=self.person.company,
+            address=self.building.address,
+            city=self.building.city,
+            state=self.building.state,
+            country=self.building.country,
+        )
+
+
+LeadRequestInput = LeadInput | NestedLeadInput
 
 
 class AnalyzeLeadsRequest(BaseModel):
-    leads: list[LeadInput]
+    leads: list[LeadRequestInput]
+
+    def to_lead_inputs(self) -> list[LeadInput]:
+        return [
+            lead if isinstance(lead, LeadInput) else lead.to_lead_input()
+            for lead in self.leads
+        ]
 
 
 class SourceSnippet(BaseModel):

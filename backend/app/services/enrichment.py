@@ -28,16 +28,57 @@ class EnrichmentBundle:
 async def enrich_lead(lead: LeadInput) -> EnrichmentBundle:
     """Enrich one lead with market and company/property context."""
 
-    market = await enrich_market(lead)
-    company = await enrich_company(lead)
-    missing_data = [*market.missing_data, *company.missing_data]
+    market_result, company_result = await asyncio.gather(
+        enrich_market(lead),
+        enrich_company(lead),
+        return_exceptions=True,
+    )
+
+    if isinstance(market_result, Exception):
+        logger.error(
+            "Market enrichment failed for %s",
+            lead.email,
+            exc_info=(type(market_result), market_result, market_result.__traceback__),
+        )
+        market_metrics = MarketMetrics()
+        market_evidence: list[SourceSnippet] = []
+        market_missing = ["Market enrichment failed unexpectedly."]
+        address_resolution = AddressResolution(
+            confidence="Unresolved",
+            method="failed",
+            input_address=", ".join(
+                part for part in [lead.address, lead.city, lead.state, lead.country] if part
+            ),
+            explanation="Market enrichment failed, so address resolution was unavailable.",
+        )
+    else:
+        market_metrics = market_result.metrics
+        market_evidence = market_result.evidence
+        market_missing = market_result.missing_data
+        address_resolution = market_result.address_resolution
+
+    if isinstance(company_result, Exception):
+        logger.error(
+            "Company enrichment failed for %s",
+            lead.email,
+            exc_info=(type(company_result), company_result, company_result.__traceback__),
+        )
+        company_enrichment = extract_company_signals(lead=lead)
+        company_evidence: list[SourceSnippet] = []
+        company_missing = ["Company/property enrichment failed unexpectedly."]
+    else:
+        company_enrichment = company_result.enrichment
+        company_evidence = company_result.evidence
+        company_missing = company_result.missing_data
+
+    missing_data = [*market_missing, *company_missing]
 
     return EnrichmentBundle(
-        market_metrics=market.metrics,
-        company_enrichment=company.enrichment,
-        evidence=[*market.evidence, *company.evidence],
+        market_metrics=market_metrics,
+        company_enrichment=company_enrichment,
+        evidence=[*market_evidence, *company_evidence],
         missing_data=missing_data,
-        address_resolution=market.address_resolution,
+        address_resolution=address_resolution,
     )
 
 
