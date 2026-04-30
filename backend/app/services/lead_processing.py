@@ -42,6 +42,12 @@ async def process_leads(
     if not leads:
         return []
 
+    if max_concurrency <= 1:
+        results: list[LeadAnalysis] = []
+        for lead in leads:
+            results.append(await process_lead(lead))
+        return results
+
     semaphore = asyncio.Semaphore(max(1, max_concurrency))
 
     async def run_one(lead: LeadInput) -> LeadAnalysis:

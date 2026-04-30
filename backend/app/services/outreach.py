@@ -156,10 +156,14 @@ def _developer_prompt() -> str:
         "property management lead. Produce only practical insights and a concise "
         "personalized email. Tie the output to leasing volume, operational complexity, "
         "property scale, ROI, or onsite workload. Avoid generic macro statements, "
-        "persona inference, raw research, citations, and source lists. Web search is "
-        "optional; use it only for light company or property context. If using search, "
-        "prefer LinkedIn, the company site, and credible business sources, and avoid "
-        "generic listing sites, directories, or irrelevant results."
+        "persona inference, raw research, citations, source lists, scores, priority "
+        "labels, confidence labels, point values, model/rubric language, and internal "
+        "metrics. The personalized email must read like normal SDR outreach and must "
+        "not mention that the lead was scored, ranked, classified, or analyzed by an "
+        "internal system. Web search is optional; use it only for light company or "
+        "property context. If using search, prefer LinkedIn, the company site, and "
+        "credible business sources, and avoid generic listing sites, directories, or "
+        "irrelevant results."
     )
 
 
@@ -204,14 +208,13 @@ def _build_fallback_outreach(
             *build_sales_insights(analysis.score),
             *analysis.why_this_lead,
             *analysis.sales_insights,
-            f"{lead.company} is worth prioritizing at a {analysis.score.priority.lower()} priority score.",
             (
                 f"{lead.address} gives the outreach a concrete property context "
                 "for discussing leasing responsiveness and onsite workload."
             ),
             (
-                "The score breakdown creates a direct path to frame ROI around "
-                "speed-to-lead and reduced manual follow-up."
+                "Frame ROI around speed-to-lead and reduced manual follow-up, not "
+                "internal scoring language."
             ),
         ]
     )[:5]
