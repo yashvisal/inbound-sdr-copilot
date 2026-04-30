@@ -1,0 +1,58 @@
+import type { LeadInput } from "@/lib/api/types";
+
+export const sampleLeads: LeadInput[] = [
+  {
+    name: "Megan McCann",
+    email: "m.mccann@greystar.com",
+    company: "Greystar",
+    address: "The Eugene, 435 W 31st St",
+    city: "New York",
+    state: "NY",
+    country: "US",
+  },
+  {
+    name: "Luis Rodriguez",
+    email: "l.rodriguez@smallprops.com",
+    company: "Small Properties LLC",
+    address: "1010 East 178th St",
+    city: "Bronx",
+    state: "NY",
+    country: "US",
+  },
+  {
+    name: "Ashley Culpepper",
+    email: "a.culpepper@greystar.com",
+    company: "Greystar",
+    address: "Lamar Union, 1100 S Lamar Blvd",
+    city: "Austin",
+    state: "TX",
+    country: "US",
+  },
+  {
+    name: "Daniel Kim",
+    email: "d.kim@lincolnapts.com",
+    company: "Lincoln Property Company",
+    address: "OneEleven, 111 W Wacker Dr",
+    city: "Chicago",
+    state: "IL",
+    country: "US",
+  },
+  {
+    name: "Avery Smith",
+    email: "avery@assetliving.com",
+    company: "Asset Living",
+    address: "Novel Midtown, 855 Peachtree St NE",
+    city: "Atlanta",
+    state: "GA",
+    country: "US",
+  },
+  {
+    name: "James Wilson",
+    email: "j.wilson@momandpoprentals.com",
+    company: "Mom & Pop Rentals",
+    address: "123 Maple Ave",
+    city: "Des Moines",
+    state: "IA",
+    country: "US",
+  },
+];
