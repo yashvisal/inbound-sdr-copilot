@@ -258,5 +258,15 @@ class LeadAnalysis(BaseModel):
     follow_ups: list[str]
 
 
+class OutreachGenerationRequest(BaseModel):
+    lead: LeadInput
+    analysis: LeadAnalysis
+
+
+class OutreachGenerationResponse(BaseModel):
+    sales_insights: list[str]
+    personalized_email: str
+
+
 class AnalyzeLeadsResponse(BaseModel):
     leads: list[LeadAnalysis]

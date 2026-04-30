@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
+    openai_outreach_model: str = Field(default="gpt-5.5", alias="OPENAI_OUTREACH_MODEL")
     enrichment_max_concurrency: int = Field(default=5, alias="ENRICHMENT_MAX_CONCURRENCY")
 
 
