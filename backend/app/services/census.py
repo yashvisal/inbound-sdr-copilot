@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -7,6 +8,8 @@ import httpx
 from app.config import get_settings
 from app.models import MarketMetrics
 from app.services.geo import STATE_NAME_BY_FIPS, normalize_place_name, state_fips
+
+logger = logging.getLogger(__name__)
 
 ACS_YEAR = "2023"
 ACS_BASE_URL = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
@@ -322,7 +325,10 @@ async def fetch_place_population_history(place_geoid: str) -> PlacePopulationHis
     query while still serving dimension metadata.
     """
 
-    if len(place_geoid) < 3:
+    # A place GEOID is exactly 2 state digits plus 5 place digits. Splitting a
+    # shorter value would silently query a different place.
+    if len(place_geoid) != 7:
+        logger.warning("Ignoring malformed place GEOID %r", place_geoid)
         return None
     state_fips, place_fips = place_geoid[:2], place_geoid[2:]
 
@@ -332,6 +338,17 @@ async def fetch_place_population_history(place_geoid: str) -> PlacePopulationHis
             _fetch_place_population(client, state_fips, place_fips, ACS_GROWTH_BASE_URL),
             return_exceptions=True,
         )
+
+    # gather() swallows failures into the results; surface them so a broken
+    # vintage is diagnosable instead of just looking like missing data.
+    for label, result in (("latest", latest), ("baseline", base)):
+        if isinstance(result, BaseException):
+            logger.warning(
+                "ACS %s population lookup failed for place %s: %s",
+                label,
+                place_geoid,
+                result,
+            )
 
     latest_population = latest if isinstance(latest, int) else None
     base_population = base if isinstance(base, int) else None

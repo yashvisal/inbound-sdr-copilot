@@ -131,18 +131,22 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
         metrics.median_gross_rent = place.metrics.median_gross_rent
         metrics.population = place.metrics.population
 
+    history_failed = False
     if place_geoid:
         try:
             population_history = await fetch_place_population_history(place_geoid)
         except Exception:
             logger.exception("ACS population history fetch failed for %s", place_geoid)
             population_history = None
+            history_failed = True
             missing_data.append("ACS population history was unavailable.")
     else:
         population_history = None
 
     if population_history is None or population_history.latest_population is None:
-        missing_data.append("Population data was unavailable from the Census ACS.")
+        # A fetch failure already reported itself above; don't say it twice.
+        if not history_failed:
+            missing_data.append("Population data was unavailable from the Census ACS.")
     else:
         metrics.population = population_history.latest_population
         metrics.population_growth_rate = population_history.growth_rate
