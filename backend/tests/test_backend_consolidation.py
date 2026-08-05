@@ -2,17 +2,21 @@ import asyncio
 
 from fastapi.testclient import TestClient
 
+from app import main
 from app.main import app
 from app.models import (
     AnalyzeLeadsRequest,
     CompanyEnrichment,
+    LeadAnalysis,
     LeadInput,
     MarketMetrics,
     SourceSnippet,
 )
+from app.scoring import score_lead
 from app.services import company as company_service
 from app.services import enrichment as enrichment_service
 from app.services import lead_processing
+from app.services import run_store
 from app.services.company import CompanyEnrichmentResult, extract_company_signals
 from app.services.enrichment import EnrichmentBundle
 
@@ -322,3 +326,121 @@ def test_company_enrichment_fetches_evidence_once_then_runs_classifiers_concurre
         "website": 1,
     }
     assert order.index("property_classifier_start") < order.index("company_classifier_end")
+
+
+def _lead_payload(index: int) -> dict:
+    return {
+        "name": f"Lead {index}",
+        "email": f"lead{index}@harborresidential.com",
+        "company": "Harbor Residential",
+        "address": f"{100 + index} Main St",
+        "city": "Austin",
+        "state": "TX",
+        "country": "US",
+    }
+
+
+def test_oversized_batch_is_rejected_before_any_quota_is_spent(monkeypatch) -> None:
+    """Sequential enrichment cannot fit an unbounded batch in one request."""
+
+    reserved: list[int] = []
+
+    async def fake_reserve(*, ip: str, count: int):
+        reserved.append(count)
+        return None
+
+    monkeypatch.setattr(run_store, "reserve_run_slots", fake_reserve)
+    client = TestClient(app)
+
+    oversized = [_lead_payload(index) for index in range(main.MAX_LEADS_PER_REQUEST + 1)]
+    response = client.post("/api/leads/analyze", json={"leads": oversized})
+
+    assert response.status_code == 413
+    assert response.json()["reason"] == "batch_too_large"
+    assert reserved == []
+
+
+def test_failed_analysis_releases_the_reserved_quota(monkeypatch) -> None:
+    released: list[int] = []
+
+    async def fake_reserve(*, ip: str, count: int):
+        return None
+
+    async def fake_release(*, ip: str, count: int) -> None:
+        released.append(count)
+
+    async def exploding_process(leads):
+        raise RuntimeError("enrichment blew up")
+
+    monkeypatch.setattr(run_store, "reserve_run_slots", fake_reserve)
+    monkeypatch.setattr(run_store, "release_run_slots", fake_release)
+    monkeypatch.setattr(main, "process_leads", exploding_process)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.post("/api/leads/analyze", json={"leads": [_lead_payload(1)]})
+
+    assert response.status_code == 500
+    assert released == [1]
+
+
+def test_stored_community_contacts_are_redacted(monkeypatch) -> None:
+    """The dashboard is public, so visitor-submitted contacts are blurred."""
+
+    analysis = _analysis_payload()
+
+    async def fake_list_runs(limit: int = 200):
+        return [
+            {
+                "id": "community-run",
+                "source": "community",
+                "created_at": "2026-08-05T00:00:00+00:00",
+                "analysis": analysis,
+            },
+            {
+                "id": "sample-run",
+                "source": "sample",
+                "created_at": "2026-08-05T00:00:00+00:00",
+                "analysis": analysis,
+            },
+        ]
+
+    monkeypatch.setattr(run_store, "list_runs", fake_list_runs)
+    client = TestClient(app)
+
+    runs = client.get("/api/leads").json()["runs"]
+    community = next(run for run in runs if run["source"] == "community")
+    sample = next(run for run in runs if run["source"] == "sample")
+
+    assert community["analysis"]["lead"]["email"] == "m***@harborresidential.com"
+    assert community["analysis"]["lead"]["address"] == "*** Main St"
+    # Curated samples use invented contacts and stay readable.
+    assert sample["analysis"]["lead"]["email"] == "maya@harborresidential.com"
+    assert sample["analysis"]["lead"]["address"] == "123 Main St"
+
+
+def _analysis_payload() -> dict:
+    """A minimal stored analysis, shaped like one the run store would hold."""
+
+    lead = LeadInput(
+        name="Maya Chen",
+        email="maya@harborresidential.com",
+        company="Harbor Residential",
+        address="123 Main St",
+        city="Austin",
+        state="TX",
+        country="US",
+    )
+    enrichment = _company_enrichment(lead)
+    analysis = LeadAnalysis(
+        lead=lead,
+        score=score_lead(
+            lead=lead,
+            market_metrics=_market_metrics(),
+            company_enrichment=enrichment,
+        ),
+        market_metrics=_market_metrics(),
+        company_enrichment=enrichment,
+        outreach_email="",
+        follow_ups=[],
+    )
+    return analysis.model_dump(mode="json")

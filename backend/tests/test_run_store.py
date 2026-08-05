@@ -146,6 +146,27 @@ def test_seconds_until_tomorrow_is_bounded_by_one_day() -> None:
     assert run_store.seconds_until_tomorrow(moment) == 3600
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
+@pytest.mark.anyio
+async def test_release_returns_capacity_after_a_failed_run(fake_redis) -> None:
+    """A run that never produced results must not permanently burn budget."""
+
+    assert await run_store.reserve_run_slots(ip="1.2.3.4", count=2) is None
+    await run_store.release_run_slots(ip="1.2.3.4", count=2)
+
+    assert fake_redis.values[run_store._month_key()] == 0
+    assert fake_redis.values[run_store._day_key("1.2.3.4")] == 0
+
+    # The refunded capacity is usable again.
+    assert await run_store.reserve_run_slots(ip="1.2.3.4", count=3) is None
+
+
+@pytest.mark.anyio
+async def test_release_is_a_noop_when_storage_is_unconfigured(monkeypatch) -> None:
+    monkeypatch.setattr(run_store, "get_settings", lambda: Settings(_env_file=None))
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("release must not touch the network when unconfigured")
+
+    monkeypatch.setattr(run_store.httpx, "AsyncClient", _fail)
+
+    await run_store.release_run_slots(ip="1.2.3.4", count=2)

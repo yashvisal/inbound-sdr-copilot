@@ -16,13 +16,20 @@ The API runs on `http://localhost:8000`.
 | --- | --- | --- |
 | `GET` | `/health` | Liveness check |
 | `GET` | `/api/leads` | Stored runs for the shared dashboard (samples + community) |
-| `GET` | `/api/quota` | Remaining live-run budget for the current month |
-| `POST` | `/api/leads/analyze` | Enrich and score leads; returns 429 when a quota is hit |
+| `GET` | `/api/quota` | Remaining monthly budget, plus the per-visitor daily limit |
+| `POST` | `/api/leads/analyze` | Enrich and score leads; 413 above `MAX_LEADS_PER_REQUEST`, 429 when a quota is hit |
 | `POST` | `/api/leads/generate-outreach` | Sales insights + personalized email for one analysis |
 
 Run storage and quotas live in Upstash Redis (`app/services/run_store.py`). When
 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are unset, both degrade to
 no-ops so local development needs no external services.
+
+Two independent quotas guard the analyze endpoint, and either one can reject a
+request on its own: a global monthly budget (`MAX_RUNS_PER_MONTH`) that resets
+on the 1st, and a per-visitor daily allowance (`MAX_RUNS_PER_IP_PER_DAY`). A
+visitor who has spent today's allowance gets a 429 even when the month still has
+capacity left, so `GET /api/quota` reports both numbers. Slots are reserved for
+every lead in a batch up front and released again if the run fails.
 
 Useful verification commands:
 

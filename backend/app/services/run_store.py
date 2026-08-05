@@ -277,6 +277,40 @@ async def reserve_run_slots(*, ip: str, count: int) -> str | None:
     return None
 
 
+async def release_run_slots(*, ip: str, count: int) -> None:
+    """Hand back capacity reserved for a run that never completed.
+
+    The counterpart to :func:`reserve_run_slots`: without it a failed pipeline
+    would permanently burn budget the caller never got any value from.
+    """
+
+    settings = get_settings()
+    if not settings.run_store_enabled or count <= 0:
+        return
+
+    await _pipeline(
+        [
+            ["DECRBY", _month_key(), count],
+            ["DECRBY", _day_key(ip), count],
+        ]
+    )
+
+
+async def delete_run(run_id: str) -> None:
+    """Remove one stored run and drop it from the dashboard index."""
+
+    settings = get_settings()
+    if not settings.run_store_enabled:
+        return
+
+    await _pipeline(
+        [
+            ["DEL", f"{RECORD_PREFIX}{run_id}"],
+            ["ZREM", INDEX_KEY, run_id],
+        ]
+    )
+
+
 def seconds_until_tomorrow(moment: datetime | None = None) -> int:
     current = moment or _now()
     tomorrow = (current + timedelta(days=1)).replace(
