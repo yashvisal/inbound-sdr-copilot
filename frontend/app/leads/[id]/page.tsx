@@ -55,19 +55,25 @@ export default function LeadDetailPage() {
   const mergeRuns = useLeadStore((state) => state.mergeRuns)
   const hydrated = useHasHydrated()
   const [fetchingRun, setFetchingRun] = React.useState(false)
+  const [fetchFailed, setFetchFailed] = React.useState(false)
   const fetchAttempted = React.useRef(false)
 
   // Shared links land here with an empty session store, so pull the run set
   // from the backend once before deciding the lead is missing.
+  const loadStoredRuns = React.useCallback(() => {
+    setFetchingRun(true)
+    setFetchFailed(false)
+    fetchStoredRuns()
+      .then((body) => mergeRuns(fromStoredRuns(body.runs)))
+      .catch(() => setFetchFailed(true))
+      .finally(() => setFetchingRun(false))
+  }, [mergeRuns])
+
   React.useEffect(() => {
     if (!hydrated || analysis || fetchAttempted.current) return
     fetchAttempted.current = true
-    setFetchingRun(true)
-    fetchStoredRuns()
-      .then((body) => mergeRuns(fromStoredRuns(body.runs)))
-      .catch(() => undefined)
-      .finally(() => setFetchingRun(false))
-  }, [hydrated, analysis, mergeRuns])
+    loadStoredRuns()
+  }, [hydrated, analysis, loadStoredRuns])
 
   if (!hydrated || (!analysis && fetchingRun)) {
     return <DetailShell><DetailSkeleton /></DetailShell>
@@ -76,7 +82,7 @@ export default function LeadDetailPage() {
   if (!analysis) {
     return (
       <DetailShell>
-        <MissingState />
+        <MissingState unreachable={fetchFailed} onRetry={loadStoredRuns} />
       </DetailShell>
     )
   }
@@ -670,22 +676,44 @@ function OutreachSkeleton() {
   )
 }
 
-function MissingState() {
+/**
+ * A lead can be absent for two very different reasons, and saying "rotated out"
+ * when the backend is simply unreachable sends people looking for the wrong
+ * problem.
+ */
+function MissingState({
+  unreachable,
+  onRetry,
+}: {
+  unreachable: boolean
+  onRetry: () => void
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted">
         <AlertCircle className="size-5 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <p className="font-medium">Lead not found</p>
+        <p className="font-medium">
+          {unreachable ? "Could not load this lead" : "Lead not found"}
+        </p>
         <p className="max-w-md text-sm text-muted-foreground">
-          This analysis is no longer on the dashboard. Older community runs are
-          rotated out as new ones come in.
+          {unreachable
+            ? "The analysis service did not respond, so we cannot tell whether this lead exists. It may be waking up — try again in a moment."
+            : "This analysis is no longer on the dashboard. Older community runs are rotated out as new ones come in."}
         </p>
       </div>
-      <Button asChild>
-        <Link href="/leads">Back to Leads</Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        {unreachable && (
+          <Button onClick={onRetry}>
+            <RefreshCw className="size-4" />
+            Try again
+          </Button>
+        )}
+        <Button asChild variant={unreachable ? "outline" : "default"}>
+          <Link href="/leads">Back to Leads</Link>
+        </Button>
+      </div>
     </div>
   )
 }
