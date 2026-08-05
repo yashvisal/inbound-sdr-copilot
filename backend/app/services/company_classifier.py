@@ -109,8 +109,10 @@ async def _call_openai_classifier(
                 "Content-Type": "application/json",
             },
             json={
+                # No temperature override: gpt-5.6 models only accept the
+                # default. Determinism comes from the strict json_schema and
+                # the Python scoring layer, not from sampling settings.
                 "model": model,
-                "temperature": 0,
                 "messages": [
                     {"role": "system", "content": _system_prompt()},
                     {
@@ -338,7 +340,7 @@ def _system_prompt() -> str:
         "scale evidence is repeated across snippets; otherwise cite one exact source. "
         "For operational_complexity, very large residential portfolios may be classified as High "
         "when scale evidence strongly implies leasing, resident, or property operations even if a "
-        "workflow phrase is not explicit. Evaluate product_fit relative to EliseAI's ICP: "
+        "workflow phrase is not explicit. Evaluate product_fit relative to the ICP: "
         "residential property management companies, especially multifamily operators, with large "
         "portfolios across multiple properties or markets. Product fit is Very Strong or Strong "
         "when the company clearly matches this ICP, even if the source does not explicitly mention "

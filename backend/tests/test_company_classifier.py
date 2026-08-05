@@ -872,25 +872,52 @@ def test_low_leasing_volume_caps_complexity_at_low() -> None:
     assert audit.score_contribution == 4
 
 
-def test_priority_uses_gtm_thresholds() -> None:
-    lead = _lead()
-    score = score_lead(
-        lead=lead,
-        market_metrics=MarketMetrics(),
-        company_enrichment=CompanyEnrichment(
-            business_type_signals=["multifamily"],
-            property_signals=["apartments"],
-            leasing_volume_signals=["over 900,000 apartment units"],
-            operational_complexity_signals=["centralized leasing", "resident services"],
-            product_fit_signals=["centralized leasing"],
-            source_text=(
-                "Multifamily operator with over 900,000 apartment units, centralized leasing, "
-                "resident services, and apartment operations."
-            ),
+def _ideal_operator() -> CompanyEnrichment:
+    return CompanyEnrichment(
+        business_type_signals=["multifamily"],
+        property_signals=["apartments"],
+        leasing_volume_signals=["over 900,000 apartment units"],
+        operational_complexity_signals=["centralized leasing", "resident services"],
+        product_fit_signals=["centralized leasing"],
+        source_text=(
+            "Multifamily operator with over 900,000 apartment units, centralized leasing, "
+            "resident services, and apartment operations."
         ),
     )
 
-    assert score.final_score >= 40
+
+def test_strong_company_without_market_data_is_not_high_priority() -> None:
+    """Company and property fit alone top out at 55, below the High threshold."""
+
+    score = score_lead(
+        lead=_lead(),
+        market_metrics=MarketMetrics(),
+        company_enrichment=_ideal_operator(),
+    )
+
+    assert score.final_score >= 50
+    assert score.priority == "Medium"
+
+
+def test_strong_company_in_strong_market_is_high_priority() -> None:
+    score = score_lead(
+        lead=_lead(),
+        market_metrics=MarketMetrics(
+            population=979_539,
+            population_growth_rate=0.014,
+            median_gross_rent=1_850,
+            median_income=91_461,
+            renter_share=0.55,
+            housing_units=465_000,
+            vacancy_rate=0.08,
+            no_vehicle_household_share=0.12,
+            public_transit_commute_share=0.06,
+            walking_commute_share=0.10,
+        ),
+        company_enrichment=_ideal_operator(),
+    )
+
+    assert score.final_score >= 75
     assert score.priority == "High"
 
 
