@@ -211,6 +211,10 @@ class SignalAudit(BaseModel):
     confidence: Literal["High", "Medium", "Low"] | None = None
     classifier: Literal["openai_classifier", "rule_fallback"] = "rule_fallback"
     score_contribution: int
+    # Ceiling for this signal, so the UI can render "11/13" without hardcoding
+    # the score tables. Optional: records stored before this field existed
+    # simply omit it.
+    max_contribution: int | None = None
 
 
 class MicroSignalClassification(BaseModel):
@@ -220,6 +224,20 @@ class MicroSignalClassification(BaseModel):
     interpreted_bucket: str
     confidence: Literal["High", "Medium", "Low"]
     classifier: Literal["openai_classifier", "rule_fallback"] = "openai_classifier"
+
+
+class MarketSubScore(BaseModel):
+    """One Location Fit component, with the metrics that actually drove it."""
+
+    label: str
+    score: int
+    max_score: int
+    detail: str | None = None
+
+
+class MarketFitBreakdown(BaseModel):
+    score_breakdown: dict[str, MarketSubScore] = Field(default_factory=dict)
+    dampener_penalty: int = 0
 
 
 class CompanyFitBreakdown(BaseModel):
@@ -236,6 +254,7 @@ class ScoreBreakdown(BaseModel):
     market_fit: ScoreSection
     company_fit: ScoreSection
     property_fit: ScoreSection
+    market_fit_breakdown: MarketFitBreakdown | None = None
     company_fit_breakdown: CompanyFitBreakdown | None = None
     property_fit_breakdown: PropertyFitBreakdown | None = None
     final_score: int
@@ -276,3 +295,27 @@ class OutreachGenerationResponse(BaseModel):
 
 class AnalyzeLeadsResponse(BaseModel):
     leads: list[LeadAnalysis]
+
+
+class StoredRun(BaseModel):
+    """One analysis as persisted for the shared community dashboard."""
+
+    id: str
+    source: Literal["sample", "community"]
+    created_at: str
+    analysis: LeadAnalysis
+
+
+class StoredRunsResponse(BaseModel):
+    runs: list[StoredRun] = Field(default_factory=list)
+
+
+class QuotaResponse(BaseModel):
+    runs_used: int
+    runs_limit: int
+    runs_remaining: int
+    period_end: str
+    enabled: bool
+    # How many leads one visitor may analyze per day. The frontend uses this to
+    # cap CSV uploads instead of letting them fail with a 429.
+    per_visitor_daily_limit: int

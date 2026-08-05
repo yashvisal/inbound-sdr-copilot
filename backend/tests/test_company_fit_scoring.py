@@ -57,7 +57,9 @@ def test_property_operator_with_volume_and_workflow_signals_scores_high() -> Non
     )
 
     assert score.company_fit.score >= 13
-    assert score.property_fit.score == 16
+    # Property Fit is address-scoped: the building name yields Multifamily, but
+    # company-level unit counts do not inflate property scale or leasing activity.
+    assert score.property_fit.score == 11
     assert score.company_fit_label == "Unclear fit"
     assert score.company_fit_breakdown is not None
     assert score.company_fit_breakdown.score_breakdown["leasing_volume"] == 4
@@ -131,7 +133,7 @@ def test_missing_company_data_defaults_to_neutral_property_fit() -> None:
     )
 
     assert score.property_fit.score == 8
-    assert "neutral" in score.property_fit.reasons[0]
+    assert "Unknown" in score.property_fit.reasons[0]
 
 
 def test_search_snippets_feed_extracted_signals_for_offline_edge_cases() -> None:
@@ -184,7 +186,7 @@ def test_company_level_office_language_does_not_pollute_property_fit() -> None:
     score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
 
     assert "office" not in enrichment.negative_property_signals
-    assert score.property_fit.score == 16
+    assert score.property_fit.score == 11
 
 
 def test_property_fit_uses_structured_property_classifications() -> None:
@@ -243,29 +245,11 @@ def test_osm_property_type_overrides_noisy_search_classification() -> None:
         osm_property_type="bench",
         osm_display_name="1, Apple Park Way, Cupertino, California",
     )
-    enrichment.property_classifications = {
-        "property_type": MicroSignalClassification(
-            raw_evidence="Apartments near Apple Park",
-            evidence_source="search_snippets[0]",
-            parsed_value="apartments",
-            interpreted_bucket="Multifamily",
-            confidence="High",
-        ),
-        "property_scale": MicroSignalClassification(
-            raw_evidence="500 apartments near Apple Park",
-            evidence_source="search_snippets[0]",
-            parsed_value="500 apartments",
-            interpreted_bucket="Large",
-            confidence="High",
-        ),
-        "leasing_activity": MicroSignalClassification(
-            raw_evidence="Apartments near Apple Park are available",
-            evidence_source="search_snippets[0]",
-            parsed_value="available apartments",
-            interpreted_bucket="Active",
-            confidence="High",
-        ),
-    }
+
+    # The "apartments near" snippet is address-adjacent noise and must be filtered
+    # before classification, so no snippet-backed classification can exist.
+    assert enrichment.property_search_snippets == []
+    assert enrichment.property_search_matches_address is False
 
     score = score_lead(lead, MarketMetrics(), company_enrichment=enrichment)
 
@@ -389,3 +373,43 @@ def test_commercial_property_search_evidence_scores_low_property_fit() -> None:
         score.property_fit_breakdown.extraction_audit["property_type"].interpreted_bucket
         == "Commercial"
     )
+
+
+def test_audits_expose_max_contribution_for_every_signal() -> None:
+    """The UI renders "11/13" sub-bars, so each audit must carry its ceiling."""
+
+    lead = _lead()
+    enrichment = extract_company_signals(
+        lead=lead,
+        domain="harborresidential.com",
+        website_title="Harbor Residential Property Management",
+        website_description=(
+            "Multifamily property management for apartment communities with "
+            "8,500 units across regional markets."
+        ),
+    )
+
+    score = score_lead(lead, _strong_market(), company_enrichment=enrichment)
+
+    assert score.company_fit_breakdown is not None
+    assert score.property_fit_breakdown is not None
+    company_maxes = {
+        signal: audit.max_contribution
+        for signal, audit in score.company_fit_breakdown.extraction_audit.items()
+    }
+    property_maxes = {
+        signal: audit.max_contribution
+        for signal, audit in score.property_fit_breakdown.extraction_audit.items()
+    }
+    assert company_maxes == {
+        "leasing_volume": 13,
+        "operational_complexity": 13,
+        "product_fit": 13,
+    }
+    assert property_maxes == {
+        "property_type": 6,
+        "property_scale": 6,
+        "leasing_activity": 4,
+    }
+    assert sum(company_maxes.values()) == score.company_fit.max_score
+    assert sum(property_maxes.values()) == score.property_fit.max_score
