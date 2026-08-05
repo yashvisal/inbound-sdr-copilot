@@ -10,10 +10,26 @@ uv run dev
 
 The API runs on `http://localhost:8000`.
 
+## Endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness check |
+| `GET` | `/api/leads` | Stored runs for the shared dashboard (samples + community) |
+| `GET` | `/api/quota` | Remaining live-run budget for the current month |
+| `POST` | `/api/leads/analyze` | Enrich and score leads; returns 429 when a quota is hit |
+| `POST` | `/api/leads/generate-outreach` | Sales insights + personalized email for one analysis |
+
+Run storage and quotas live in Upstash Redis (`app/services/run_store.py`). When
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are unset, both degrade to
+no-ops so local development needs no external services.
+
 Useful verification commands:
 
 ```bash
 uv run pytest -q
+uv run python scripts/export_sample_analyses.py
+uv run python scripts/seed_sample_runs.py
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
 uv run python scripts/verify_company_fit.py --company "Harbor Residential" --address "The Morrison Apartments, 123 Main St" --property-snippet "The Morrison Apartments has 240 apartment units with available floor plans and now leasing."
 uv run python scripts/export_company_fit_golden_cases.py --live
