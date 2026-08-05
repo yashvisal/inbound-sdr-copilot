@@ -2,7 +2,7 @@
 
 **Lead enrichment and scoring for property-management sales teams.** Paste in an inbound lead — a name, a company, a property address — and get back an explainable 0-100 priority score, the evidence behind it, and a personalized outreach email.
 
-🔗 **[Live demo](https://inbound-sdr-copilot.vercel.app)** · Built with FastAPI + Next.js
+Built with FastAPI + Next.js
 
 ---
 
@@ -105,7 +105,7 @@ Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html
 **Tests and tooling:**
 
 ```bash
-uv run pytest -q                                  # 80 tests
+uv run pytest -q                                  # 94 tests
 uv run python scripts/export_sample_analyses.py   # regenerate bundled demo data
 uv run python scripts/seed_sample_runs.py         # push samples to the shared dashboard
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
