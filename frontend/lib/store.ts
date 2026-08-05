@@ -19,6 +19,9 @@ export interface RunEntry {
   analysis: LeadAnalysis;
 }
 
+/** How many runs the session cache keeps; the rest come back from the server. */
+const PERSISTED_RUN_LIMIT = 20;
+
 /** A lead that has been submitted and is still being analyzed. */
 export interface PendingRun {
   id: string;
@@ -101,13 +104,12 @@ export const useLeadStore = create<LeadStoreState>()(
       addPending: (leads) => {
         const entries = leads.map((lead) => ({ id: getLeadId(lead), lead }));
         const existing = new Set(get().pending.map((item) => item.id));
-        set({
-          pending: [
-            ...get().pending,
-            ...entries.filter((entry) => !existing.has(entry.id)),
-          ],
-        });
-        return entries.map((entry) => entry.id);
+        // Return only the ids this call actually claimed. A duplicate lead
+        // submitted while another run owns it stays owned by that run, so
+        // finishing one submission cannot clear the other's pending row.
+        const claimed = entries.filter((entry) => !existing.has(entry.id));
+        set({ pending: [...get().pending, ...claimed] });
+        return claimed.map((entry) => entry.id);
       },
       removePending: (ids) =>
         set({
@@ -137,8 +139,12 @@ export const useLeadStore = create<LeadStoreState>()(
       storage: createJSONStorage(() =>
         typeof window === "undefined" ? noopStorage : sessionStorage
       ),
+      // Each run carries its full evidence trail (~20KB), so persisting an
+      // unbounded list would eventually exceed sessionStorage. The cache only
+      // exists to paint instantly on back-navigation; the server list refills
+      // the rest on mount.
       partialize: (state) => ({
-        runs: state.runs,
+        runs: state.runs.slice(0, PERSISTED_RUN_LIMIT),
         personalizedIds: state.personalizedIds,
       }),
     }

@@ -68,12 +68,19 @@ export async function analyzeLeadsWithOutreach(
   const analyses = await analyzeLeads(leads);
   const enriched: LeadAnalysis[] = [];
   for (const analysis of analyses) {
-    const outreach = await generateOutreach(analysis);
-    enriched.push({
-      ...analysis,
-      sales_insights: outreach.sales_insights,
-      outreach_email: outreach.personalized_email,
-    });
+    try {
+      const outreach = await generateOutreach(analysis);
+      enriched.push({
+        ...analysis,
+        sales_insights: outreach.sales_insights,
+        outreach_email: outreach.personalized_email,
+      });
+    } catch {
+      // The score is the expensive part and it already succeeded (and was
+      // charged); keep it rather than discarding the batch. The detail page
+      // retries outreach on open.
+      enriched.push(analysis);
+    }
   }
   return enriched;
 }

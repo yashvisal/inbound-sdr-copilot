@@ -108,12 +108,15 @@ export default function LeadsPage() {
     fetchStoredRuns()
       .then((body) => {
         if (cancelled) return
-        // Dedupe by id, server version winning over the bundled copy.
+        // Rebuild from what the store holds now, not from the bundled snapshot:
+        // a run that finished while this request was in flight must survive.
+        // Server entries still win for ids they share.
         const byId = new Map(
-          [...SAMPLE_RUNS, ...fromStoredRuns(body.runs)].map((entry) => [
-            entry.id,
-            entry,
-          ])
+          [
+            ...SAMPLE_RUNS,
+            ...useLeadStore.getState().runs,
+            ...fromStoredRuns(body.runs),
+          ].map((entry) => [entry.id, entry])
         )
         setRuns([...byId.values()], { personalized: true })
       })
