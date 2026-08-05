@@ -1,0 +1,3210 @@
+{
+  "leads": [
+    {
+      "lead": {
+        "name": "Megan McCann",
+        "email": "m.mccann@greystar.com",
+        "company": "Greystar",
+        "address": "The Eugene, 435 W 31st St",
+        "city": "New York",
+        "state": "NY",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 39,
+          "max_score": 45,
+          "reasons": [
+            "Large population base supports market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Stable or moderate population growth supports leasing demand.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "High neighborhood median income indicates a strong economic base.",
+            "Elevated vacancy mildly tempers the local leasing-pressure signal.",
+            "High no-vehicle household share suggests urban access and density.",
+            "High public-transit commute share supports access-oriented rental demand.",
+            "High walking commute share suggests strong local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 39,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Very High from source-backed evidence.",
+            "Product fit classified as Very Strong from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 15,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Multifamily; contributes 6 points.",
+            "Property scale classified as Large; contributes 6 points.",
+            "Leasing activity classified as Moderate; contributes 3 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 9,
+              "max_score": 12,
+              "detail": "population 8,516,202 \u00b7 median rent $1,779 \u00b7 +0.9% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 85% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 8,
+              "max_score": 8,
+              "detail": "median income $119,167"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 3,
+              "max_score": 6,
+              "detail": "vacancy 24%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 9,
+              "max_score": 9,
+              "detail": "no vehicle 92% \u00b7 transit 47% \u00b7 walk 24%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 13,
+            "operational_complexity": 13,
+            "product_fit": 13
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Apartment Property Management Solutions As The Global Leader in Rental Housing, we provide end-to-end property management services for residential housing, apartment homes, furnished corporate housing ... https://www.greystar.com/business/services/property-management",
+              "evidence_source": "search_snippets[3]",
+              "parsed_value": "end-to-end property management services for residential housing, apartment homes, furnished corporate housing",
+              "interpreted_bucket": "Very Strong",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 6,
+            "property_scale": 6,
+            "leasing_activity": 3
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "OSM Nominatim returned apartments for The Eugene, 435, West 31st Street, Chelsea District, Manhattan Community Board 4, Manhattan, New York County, New York, 10001, United States.",
+              "evidence_source": "osm_nominatim",
+              "parsed_value": "apartments",
+              "interpreted_bucket": "Multifamily",
+              "confidence": "High",
+              "classifier": "rule_fallback",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "The Eugene In total it has 844 units, split between 675 market-rate and 169 affordable. Among the building's amenities are La Palestra gym with a full-size basketball ... https://en.wikipedia.org/wiki/The_Eugene",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "844 units",
+              "interpreted_bucket": "Large",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "The Eugene | Home - Brookfield Properties Crafted with the modern New Yorker in mind, our thoughtfully designed floor plans, elegant details, and expansive amenities offer an unparalleled living ... https://rent.brookfieldproperties.com/property/the-eugene/",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "floor plans; rental property website",
+              "interpreted_bucket": "Moderate",
+              "confidence": "Medium",
+              "classifier": "openai_classifier",
+              "score_contribution": 3,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 93,
+        "priority": "High",
+        "company_fit_label": "Strong fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "The Eugene, 435 W 31st St, New York, NY",
+        "matched_address": "435 W 31ST ST, NEW YORK, NY, 10001",
+        "latitude": 40.751818089383,
+        "longitude": -73.998372307624,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 1; Census Tract 103; New York County; New York",
+        "state_fips": "36",
+        "county_fips": "061",
+        "tract": "010300",
+        "block_group": "1",
+        "population": 8516202,
+        "population_growth_rate": 0.008584967300522887,
+        "median_gross_rent": 1779,
+        "median_income": 119167,
+        "renter_share": 0.85,
+        "housing_units": 1595,
+        "vacancy_rate": 0.23893200320098196,
+        "no_vehicle_household_share": 0.9170476812540823,
+        "public_transit_commute_share": 0.46943430656934304,
+        "walking_commute_share": 0.2427007299270073,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "greystar.com",
+        "website_url": "https://www.greystar.com/business/about-greystar/about",
+        "website_title": "About Us | Greystar",
+        "website_description": null,
+        "website_snippet": "OneGreystar Investor Portal Privacy Terms & Conditions Disclosures & Licenses DMCA Website Accessibility Home About Greystar About Us The Greystar Story In 1993, when Founder, Chairman, and CEO Bob Faith set out to build Greystar, he envisioned the need for a rental housing industry leader - a blue-chip company that operated with the highest integrity and character in delivering world-class services to residents, property owners, and investors. We take pride in knowing that our homes are inviting places for residents to celebrate life's important moments. What Sets Us Apart At Greystar, we care about our residents, clients, and partners - and it shows. Customer Satisfaction We will strive...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "Greystar",
+            "url": "https://en.wikipedia.org/wiki/Greystar",
+            "snippet": "Greystar Real Estate Partners is an international real estate developer and manager based in the United States. As of 2023, Greystar had over $76 billion in ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Greystar",
+            "url": "https://www.linkedin.com/company/greystar",
+            "snippet": "Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model"
+          },
+          {
+            "source": "Serper",
+            "title": "About Us",
+            "url": "https://www.greystar.com/business/about-greystar/about",
+            "snippet": "With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types"
+          },
+          {
+            "source": "Serper",
+            "title": "Apartment Property Management Solutions",
+            "url": "https://www.greystar.com/business/services/property-management",
+            "snippet": "As The Global Leader in Rental Housing, we provide end-to-end property management services for residential housing, apartment homes, furnished corporate housing ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Apartment Property Management Solutions",
+            "url": "https://www.greystar.com/business/services/property-management",
+            "snippet": "With 63 offices serving approximately 260 markets globally, and more than 1.1 million units and beds under management, Greystar ranks first among the Top 50 ..."
+          }
+        ],
+        "property_search_snippets": [
+          {
+            "source": "Serper Property",
+            "title": "The Eugene",
+            "url": "https://en.wikipedia.org/wiki/The_Eugene",
+            "snippet": "In total it has 844 units, split between 675 market-rate and 169 affordable. Among the building's amenities are La Palestra gym with a full-size basketball ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "The Eugene | Home - Brookfield Properties",
+            "url": "https://rent.brookfieldproperties.com/property/the-eugene/",
+            "snippet": "Crafted with the modern New Yorker in mind, our thoughtfully designed floor plans, elegant details, and expansive amenities offer an unparalleled living ..."
+          }
+        ],
+        "property_search_matches_address": true,
+        "osm_property_class": null,
+        "osm_property_type": "apartments",
+        "osm_display_name": "The Eugene, 435, West 31st Street, Chelsea District, Manhattan Community Board 4, Manhattan, New York County, New York, 10001, United States",
+        "business_type_signals": [
+          "apartment",
+          "developer",
+          "multifamily",
+          "property management",
+          "real estate",
+          "rental housing",
+          "residential"
+        ],
+        "leasing_volume_signals": [
+          "homes",
+          "units"
+        ],
+        "operational_complexity_signals": [
+          "residents"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "markets",
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Apartment Property Management Solutions As The Global Leader in Rental Housing, we provide end-to-end property management services for residential housing, apartment homes, furnished corporate housing ... https://www.greystar.com/business/services/property-management",
+            "evidence_source": "search_snippets[3]",
+            "parsed_value": "end-to-end property management services for residential housing, apartment homes, furnished corporate housing",
+            "interpreted_bucket": "Very Strong",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {
+          "property_type": {
+            "raw_evidence": "The Eugene In total it has 844 units, split between 675 market-rate and 169 affordable. Among the building's amenities are La Palestra gym with a full-size basketball ... https://en.wikipedia.org/wiki/The_Eugene",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "apartment building with 844 units",
+            "interpreted_bucket": "Multifamily",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "property_scale": {
+            "raw_evidence": "The Eugene In total it has 844 units, split between 675 market-rate and 169 affordable. Among the building's amenities are La Palestra gym with a full-size basketball ... https://en.wikipedia.org/wiki/The_Eugene",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "844 units; 675 market-rate units; 169 affordable units",
+            "interpreted_bucket": "Large",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "leasing_activity": {
+            "raw_evidence": "The Eugene | Home - Brookfield Properties Crafted with the modern New Yorker in mind, our thoughtfully designed floor plans, elegant details, and expansive amenities offer an unparalleled living ... https://rent.brookfieldproperties.com/property/the-eugene/",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "floor plans; rental property website",
+            "interpreted_bucket": "Moderate",
+            "confidence": "Medium",
+            "classifier": "openai_classifier"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 1; Census Tract 103; New York County; New York ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 010300, block group 1; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "New York city, New York population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 8,516,202 in the 2023 ACS 5-year estimate (+0.9% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "About Us | Greystar",
+          "url": "https://www.greystar.com/business/about-greystar/about",
+          "snippet": "OneGreystar Investor Portal Privacy Terms & Conditions Disclosures & Licenses DMCA Website Accessibility Home About Greystar About Us The Greystar Story In 1993, when Founder, Chairman, and CEO Bob Faith set out to build Greystar, he envisioned the need for a rental housing industry leader - a blue-chip company that operated with the highest integrity and character in delivering world-class services to residents, property owners, and investors. We take pride in knowing that our homes are inviting places for residents to celebrate life's important moments. What Sets Us Apart At Greystar, we care about our residents, clients, and partners - and it shows. Customer Satisfaction We will strive..."
+        },
+        {
+          "source": "Serper",
+          "title": "Greystar",
+          "url": "https://en.wikipedia.org/wiki/Greystar",
+          "snippet": "Greystar Real Estate Partners is an international real estate developer and manager based in the United States. As of 2023, Greystar had over $76 billion in ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Greystar",
+          "url": "https://www.linkedin.com/company/greystar",
+          "snippet": "Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model"
+        },
+        {
+          "source": "Serper",
+          "title": "About Us",
+          "url": "https://www.greystar.com/business/about-greystar/about",
+          "snippet": "With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types"
+        },
+        {
+          "source": "Serper",
+          "title": "Apartment Property Management Solutions",
+          "url": "https://www.greystar.com/business/services/property-management",
+          "snippet": "As The Global Leader in Rental Housing, we provide end-to-end property management services for residential housing, apartment homes, furnished corporate housing ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Apartment Property Management Solutions",
+          "url": "https://www.greystar.com/business/services/property-management",
+          "snippet": "With 63 offices serving approximately 260 markets globally, and more than 1.1 million units and beds under management, Greystar ranks first among the Top 50 ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "The Eugene",
+          "url": "https://en.wikipedia.org/wiki/The_Eugene",
+          "snippet": "In total it has 844 units, split between 675 market-rate and 169 affordable. Among the building's amenities are La Palestra gym with a full-size basketball ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "The Eugene | Home - Brookfield Properties",
+          "url": "https://rent.brookfieldproperties.com/property/the-eugene/",
+          "snippet": "Crafted with the modern New Yorker in mind, our thoughtfully designed floor plans, elegant details, and expansive amenities offer an unparalleled living ..."
+        }
+      ],
+      "missing_data": [],
+      "why_this_lead": [
+        "Large population base supports market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "The Eugene\u2019s multifamily scale creates a steady flow of leasing inquiries, tours, applications, renewals, and resident follow-up that can compete for onsite team time.",
+        "A Manhattan property requires fast, consistent prospect response and clean handoffs across leasing activity to prevent interested renters from going cold.",
+        "Streamlining routine leasing coordination can reduce manual chasing for the onsite team while giving prospects a more responsive experience.",
+        "A focused workflow at the property level can help convert more of the inquiry volume already being generated, without adding administrative burden to the leasing staff."
+      ],
+      "outreach_email": "Hi Megan,\n\nWith the pace of leasing activity at The Eugene, I imagine the onsite team is balancing a lot of prospect follow-up alongside resident requests and day-to-day operations.\n\nWe help multifamily teams automate the repetitive parts of leasing coordination\u2014speed-to-lead, follow-ups, scheduling, and handoffs\u2014so leasing staff can spend more time with qualified renters and less time chasing tasks.\n\nWould you be open to a brief conversation about where leasing workflows may be creating the most onsite workload at The Eugene?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Ashley Culpepper",
+        "email": "a.culpepper@greystar.com",
+        "company": "Greystar",
+        "address": "Lamar Union, 1100 S Lamar Blvd",
+        "city": "Austin",
+        "state": "TX",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 34,
+          "max_score": 45,
+          "reasons": [
+            "Large city population supports market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Stable or moderate population growth supports leasing demand.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "High neighborhood median income indicates a strong economic base.",
+            "Moderate vacancy is treated as a healthy neutral leasing-pressure signal.",
+            "Moderate no-vehicle household share supports urban access.",
+            "Some walking commute share supports local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 39,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Very High from source-backed evidence.",
+            "Product fit classified as Very Strong from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 13,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Multifamily; contributes 6 points.",
+            "Property scale classified as Unknown; contributes 3 points.",
+            "Leasing activity classified as Active; contributes 4 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 8,
+              "max_score": 12,
+              "detail": "population 967,862 \u00b7 median rent $1,655 \u00b7 +3.4% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 85% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 8,
+              "max_score": 8,
+              "detail": "median income $94,936"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 5,
+              "max_score": 6,
+              "detail": "vacancy 11%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 3,
+              "max_score": 9,
+              "detail": "no vehicle 12% \u00b7 transit 1% \u00b7 walk 4%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 13,
+            "operational_complexity": 13,
+            "product_fit": 13
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Greystar was the largest apartment manager in the United States, with over 798,272 units as of 2024. [4] [1] It is also the country's largest apartment owner, https://en.wikipedia.org/wiki/Greystar\n\nWith more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+              "evidence_source": "multiple_sources",
+              "parsed_value": "over 798,272 units as of 2024; more than 1.1 million multifamily units and student beds under management globally",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+              "evidence_source": "search_snippets[3]",
+              "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Greystar Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model https://www.linkedin.com/company/greystar",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "residential rental housing industry; vertically integrated business model",
+              "interpreted_bucket": "Very Strong",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 6,
+            "property_scale": 3,
+            "leasing_activity": 4
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "Lamar Union: Downtown Luxury Apartments Austin View our available floorplans and unique amenities. Our curated studio, 1, and 2-bedroom apartments feature upscale designs. Located off of South Lamar Blvd, ... https://www.lamarunion.com/",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "Studio, 1, and 2-bedroom apartments",
+              "interpreted_bucket": "Multifamily",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "Floor Plans | Lamar Union in Austin, TX Each of our studio, 1, and 2-bedroom apartments feature vinyl wood flooring, extra-large closets, private balconies, and stunning views of the vibrant city of ... https://www.lamarunion.com/floorplans",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "No explicit property count",
+              "interpreted_bucket": "Unknown",
+              "confidence": "Low",
+              "classifier": "openai_classifier",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "Lamar Union Reviews - Austin, TX Affordable 10 Available Units Studio, 1 Bath | 446 sq. ft. Affordable 6 Available Units Studio, 1 Bath | 391 sq. ft. Available Unit Studio ... https://www.apartmentratings.com/tx/austin/lamar-union_9199332346275153668/",
+              "evidence_source": "search_snippets[4]",
+              "parsed_value": "10 Available Units; 6 Available Units; Available Unit",
+              "interpreted_bucket": "Active",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 86,
+        "priority": "High",
+        "company_fit_label": "Strong fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "Lamar Union, 1100 S Lamar Blvd, Austin, TX",
+        "matched_address": "1100 S LAMAR BLVD, AUSTIN, TX, 78704",
+        "latitude": 30.255509206832,
+        "longitude": -97.761883986016,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 3; Census Tract 13.10; Travis County; Texas",
+        "state_fips": "48",
+        "county_fips": "453",
+        "tract": "001310",
+        "block_group": "3",
+        "population": 967862,
+        "population_growth_rate": 0.03431133149168319,
+        "median_gross_rent": 1655,
+        "median_income": 94936,
+        "renter_share": 0.85,
+        "housing_units": 707,
+        "vacancy_rate": 0.10788936036460789,
+        "no_vehicle_household_share": 0.12231340367330988,
+        "public_transit_commute_share": 0.012933753943217666,
+        "walking_commute_share": 0.038485804416403785,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "greystar.com",
+        "website_url": "https://www.greystar.com/business/about-greystar/about",
+        "website_title": "About Us | Greystar",
+        "website_description": null,
+        "website_snippet": "OneGreystar Investor Portal Privacy Terms & Conditions Disclosures & Licenses DMCA Website Accessibility Home About Greystar About Us The Greystar Story In 1993, when Founder, Chairman, and CEO Bob Faith set out to build Greystar, he envisioned the need for a rental housing industry leader - a blue-chip company that operated with the highest integrity and character in delivering world-class services to residents, property owners, and investors. We take pride in knowing that our homes are inviting places for residents to celebrate life's important moments. What Sets Us Apart At Greystar, we care about our residents, clients, and partners - and it shows. Customer Satisfaction We will strive...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "Greystar",
+            "url": "https://en.wikipedia.org/wiki/Greystar",
+            "snippet": "Greystar was the largest apartment manager in the United States, with over 798,272 units as of 2024. [4] [1] It is also the country's largest apartment owner,"
+          },
+          {
+            "source": "Serper",
+            "title": "Greystar",
+            "url": "https://en.wikipedia.org/wiki/Greystar",
+            "snippet": "Greystar Real Estate Partners is an international real estate developer and manager based in the United States. As of 2023, Greystar had over $76 billion in ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Greystar",
+            "url": "https://www.linkedin.com/company/greystar",
+            "snippet": "Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model"
+          },
+          {
+            "source": "Serper",
+            "title": "About Us",
+            "url": "https://www.greystar.com/business/about-greystar/about",
+            "snippet": "With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types"
+          },
+          {
+            "source": "Serper",
+            "title": "Real Estate Investment Management",
+            "url": "https://www.greystar.com/business/services/investment-management",
+            "snippet": "Greystar oversees a global portfolio comprising approximately 260,000 owned units across multiple strategies and geographies."
+          }
+        ],
+        "property_search_snippets": [
+          {
+            "source": "Serper Property",
+            "title": "Floor Plans | Lamar Union in Austin, TX",
+            "url": "https://www.lamarunion.com/floorplans",
+            "snippet": "Each of our studio, 1, and 2-bedroom apartments feature vinyl wood flooring, extra-large closets, private balconies, and stunning views of the vibrant city of ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "Lamar Union: Downtown Luxury Apartments Austin",
+            "url": "https://www.lamarunion.com/",
+            "snippet": "View our available floorplans and unique amenities. Our curated studio, 1, and 2-bedroom apartments feature upscale designs. Located off of South Lamar Blvd, ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "Lamar Union: Downtown Luxury Apartments Austin",
+            "url": "https://www.lamarunion.com/",
+            "snippet": "Our curated studio, 1, and 2-bedroom apartments feature upscale designs and amenities such as chef style kitchens with stainless steel appliances, spacious ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "Floor Plans | Lamar Union in Austin, TX",
+            "url": "https://www.lamarunion.com/floorplans",
+            "snippet": "Browse stylish floor plans at Lamar Union in Austin, TX. Find layouts with premium finishes, spacious designs, and modern touches. View your options today!"
+          },
+          {
+            "source": "Serper Property",
+            "title": "Lamar Union Reviews - Austin, TX",
+            "url": "https://www.apartmentratings.com/tx/austin/lamar-union_9199332346275153668/",
+            "snippet": "Affordable 10 Available Units Studio, 1 Bath | 446 sq. ft. Affordable 6 Available Units Studio, 1 Bath | 391 sq. ft. Available Unit Studio ..."
+          }
+        ],
+        "property_search_matches_address": true,
+        "osm_property_class": null,
+        "osm_property_type": null,
+        "osm_display_name": null,
+        "business_type_signals": [
+          "apartment",
+          "developer",
+          "multifamily",
+          "real estate",
+          "rental housing",
+          "residential"
+        ],
+        "leasing_volume_signals": [
+          "homes",
+          "portfolio",
+          "units",
+          "over 798,272 units"
+        ],
+        "operational_complexity_signals": [
+          "residents"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [
+          "apartments"
+        ],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "across",
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Greystar was the largest apartment manager in the United States, with over 798,272 units as of 2024. [4] [1] It is also the country's largest apartment owner, https://en.wikipedia.org/wiki/Greystar\n\nWith more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+            "evidence_source": "multiple_sources",
+            "parsed_value": "over 798,272 units as of 2024; more than 1.1 million multifamily units and student beds under management globally",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "About Us With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types https://www.greystar.com/business/about-greystar/about",
+            "evidence_source": "search_snippets[3]",
+            "parsed_value": "more than 1.1 million multifamily units and student beds under management globally",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Greystar Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model https://www.linkedin.com/company/greystar",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "residential rental housing industry; vertically integrated business model",
+            "interpreted_bucket": "Very Strong",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {
+          "property_type": {
+            "raw_evidence": "Lamar Union: Downtown Luxury Apartments Austin View our available floorplans and unique amenities. Our curated studio, 1, and 2-bedroom apartments feature upscale designs. Located off of South Lamar Blvd, ... https://www.lamarunion.com/",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "Studio, 1, and 2-bedroom apartments",
+            "interpreted_bucket": "Multifamily",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "property_scale": {
+            "raw_evidence": "Floor Plans | Lamar Union in Austin, TX Each of our studio, 1, and 2-bedroom apartments feature vinyl wood flooring, extra-large closets, private balconies, and stunning views of the vibrant city of ... https://www.lamarunion.com/floorplans",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "No explicit property count",
+            "interpreted_bucket": "Unknown",
+            "confidence": "Low",
+            "classifier": "openai_classifier"
+          },
+          "leasing_activity": {
+            "raw_evidence": "Lamar Union Reviews - Austin, TX Affordable 10 Available Units Studio, 1 Bath | 446 sq. ft. Affordable 6 Available Units Studio, 1 Bath | 391 sq. ft. Available Unit Studio ... https://www.apartmentratings.com/tx/austin/lamar-union_9199332346275153668/",
+            "evidence_source": "search_snippets[4]",
+            "parsed_value": "10 Available Units; 6 Available Units; Available Unit",
+            "interpreted_bucket": "Active",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 3; Census Tract 13.10; Travis County; Texas ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 001310, block group 3; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "Austin city, Texas population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 967,862 in the 2023 ACS 5-year estimate (+3.4% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "About Us | Greystar",
+          "url": "https://www.greystar.com/business/about-greystar/about",
+          "snippet": "OneGreystar Investor Portal Privacy Terms & Conditions Disclosures & Licenses DMCA Website Accessibility Home About Greystar About Us The Greystar Story In 1993, when Founder, Chairman, and CEO Bob Faith set out to build Greystar, he envisioned the need for a rental housing industry leader - a blue-chip company that operated with the highest integrity and character in delivering world-class services to residents, property owners, and investors. We take pride in knowing that our homes are inviting places for residents to celebrate life's important moments. What Sets Us Apart At Greystar, we care about our residents, clients, and partners - and it shows. Customer Satisfaction We will strive..."
+        },
+        {
+          "source": "Serper",
+          "title": "Greystar",
+          "url": "https://en.wikipedia.org/wiki/Greystar",
+          "snippet": "Greystar was the largest apartment manager in the United States, with over 798,272 units as of 2024. [4] [1] It is also the country's largest apartment owner,"
+        },
+        {
+          "source": "Serper",
+          "title": "Greystar",
+          "url": "https://en.wikipedia.org/wiki/Greystar",
+          "snippet": "Greystar Real Estate Partners is an international real estate developer and manager based in the United States. As of 2023, Greystar had over $76 billion in ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Greystar",
+          "url": "https://www.linkedin.com/company/greystar",
+          "snippet": "Founded in 1993, Greystar provides world-class service in the residential rental housing industry. Our innovative vertically integrated business model"
+        },
+        {
+          "source": "Serper",
+          "title": "About Us",
+          "url": "https://www.greystar.com/business/about-greystar/about",
+          "snippet": "With more than 1.1 million multifamily units and student beds under management globally, Greystar provides a wealth of experience in managing all product types"
+        },
+        {
+          "source": "Serper",
+          "title": "Real Estate Investment Management",
+          "url": "https://www.greystar.com/business/services/investment-management",
+          "snippet": "Greystar oversees a global portfolio comprising approximately 260,000 owned units across multiple strategies and geographies."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Floor Plans | Lamar Union in Austin, TX",
+          "url": "https://www.lamarunion.com/floorplans",
+          "snippet": "Each of our studio, 1, and 2-bedroom apartments feature vinyl wood flooring, extra-large closets, private balconies, and stunning views of the vibrant city of ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Lamar Union: Downtown Luxury Apartments Austin",
+          "url": "https://www.lamarunion.com/",
+          "snippet": "View our available floorplans and unique amenities. Our curated studio, 1, and 2-bedroom apartments feature upscale designs. Located off of South Lamar Blvd, ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Lamar Union: Downtown Luxury Apartments Austin",
+          "url": "https://www.lamarunion.com/",
+          "snippet": "Our curated studio, 1, and 2-bedroom apartments feature upscale designs and amenities such as chef style kitchens with stainless steel appliances, spacious ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Floor Plans | Lamar Union in Austin, TX",
+          "url": "https://www.lamarunion.com/floorplans",
+          "snippet": "Browse stylish floor plans at Lamar Union in Austin, TX. Find layouts with premium finishes, spacious designs, and modern touches. View your options today!"
+        },
+        {
+          "source": "Serper Property",
+          "title": "Lamar Union Reviews - Austin, TX",
+          "url": "https://www.apartmentratings.com/tx/austin/lamar-union_9199332346275153668/",
+          "snippet": "Affordable 10 Available Units Studio, 1 Bath | 446 sq. ft. Affordable 6 Available Units Studio, 1 Bath | 391 sq. ft. Available Unit Studio ..."
+        }
+      ],
+      "missing_data": [
+        "OSM property metadata was unavailable from Nominatim."
+      ],
+      "why_this_lead": [
+        "Large city population supports market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "Lamar Union\u2019s multifamily setting creates a steady flow of leasing questions, tour coordination, follow-up, and resident communication for the onsite team.",
+        "At Greystar\u2019s portfolio scale, even small reductions in manual leasing and resident-response work can compound across properties without adding onsite headcount.",
+        "For a high-visibility South Lamar community, faster response times and more consistent follow-up can help protect conversion while giving leasing staff more time for tours and resident experience.",
+        "Austin\u2019s renter-heavy market makes quick, reliable engagement especially important when prospects are comparing multiple nearby apartment options."
+      ],
+      "outreach_email": "Subject: Reducing leasing follow-up at Lamar Union\n\nHi Ashley,\n\nAt a community like Lamar Union, the onsite team is balancing tours, prospect follow-up, and resident requests throughout the day. When those conversations pile up, response speed and leasing consistency can suffer.\n\nWe help multifamily teams automate the repetitive parts of prospect and resident communication\u2014answering common questions, capturing intent, and keeping follow-up moving\u2014so onsite staff can focus on tours and higher-value resident interactions.\n\nWould you be open to a brief conversation about where Lamar Union\u2019s team is spending the most manual time today?",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Avery Smith",
+        "email": "avery@assetliving.com",
+        "company": "Asset Living",
+        "address": "Novel Midtown, 855 Peachtree St NE",
+        "city": "Atlanta",
+        "state": "GA",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 31,
+          "max_score": 45,
+          "reasons": [
+            "Mid-size population base provides some market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Stable or moderate population growth supports leasing demand.",
+            "Moderate neighborhood renter share suggests some local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "High neighborhood median income indicates a strong economic base.",
+            "Low vacancy suggests strong local leasing pressure.",
+            "Low no-vehicle household share weakens the urban-access signal.",
+            "Some public-transit commute share supports access-oriented demand.",
+            "High walking commute share suggests strong local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 39,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Very High from source-backed evidence.",
+            "Product fit classified as Very Strong from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 16,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Multifamily; contributes 6 points.",
+            "Property scale classified as Large; contributes 6 points.",
+            "Leasing activity classified as Active; contributes 4 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 7,
+              "max_score": 12,
+              "detail": "population 499,287 \u00b7 median rent $1,617 \u00b7 +4.1% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 5,
+              "max_score": 10,
+              "detail": "renter share 41% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 8,
+              "max_score": 8,
+              "detail": "median income $154,012"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 6,
+              "max_score": 6,
+              "detail": "vacancy 3%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 5,
+              "max_score": 9,
+              "detail": "no vehicle 9% \u00b7 transit 8% \u00b7 walk 14%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 13,
+            "operational_complexity": 13,
+            "product_fit": 13
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "over 455K units",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "over 455K units; 500+ clients; nationwide, coast-to-coast",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "over 455K units; 500+ clients; nationwide, coast-to-coast",
+              "interpreted_bucket": "Very Strong",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 6,
+            "property_scale": 6,
+            "leasing_activity": 4
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "Novel Midtown Atlanta, Georgia Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ... https://www.nilesbolton.com/multifamily-novel-midtown",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "Apartment community with 340 luxury apartment units",
+              "interpreted_bucket": "Multifamily",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "Novel Midtown Atlanta, Georgia Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ... https://www.nilesbolton.com/multifamily-novel-midtown",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "340 units",
+              "interpreted_bucket": "Large",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "Novel Midtown is a pet-friendly apartment community in ... Novel Midtown in Atlanta, GA offers Studio, 1, 2, or 3 bedroom apartments for rent. On 13+ month leases! Call us at 404.620.6260. Call us at 404.620.6260 https://novelmidtownatl.com/",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "Studio, 1, 2, or 3 bedroom apartments for rent; phone number provided",
+              "interpreted_bucket": "Active",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 86,
+        "priority": "High",
+        "company_fit_label": "Strong fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "Novel Midtown, 855 Peachtree St NE, Atlanta, GA",
+        "matched_address": "855 PEACHTREE ST, ATLANTA, GA, 30308",
+        "latitude": 33.778235676085,
+        "longitude": -84.384264567264,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 3; Census Tract 12.06; Fulton County; Georgia",
+        "state_fips": "13",
+        "county_fips": "121",
+        "tract": "001206",
+        "block_group": "3",
+        "population": 499287,
+        "population_growth_rate": 0.0409294180192013,
+        "median_gross_rent": 1617,
+        "median_income": 154012,
+        "renter_share": 0.41341765873015873,
+        "housing_units": 1152,
+        "vacancy_rate": 0.03389830508474576,
+        "no_vehicle_household_share": 0.08578987150415722,
+        "public_transit_commute_share": 0.07985989492119089,
+        "walking_commute_share": 0.14430823117338004,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "har.com",
+        "website_url": "https://www.har.com/apartments/search?management=Asset+Living",
+        "website_title": "Apartments by Asset Living - HAR.com",
+        "website_description": "Discover Asset Living apartments with a range of rentals offering easy access to amenities, parks, and shopping, and more on HAR.com",
+        "website_snippet": "Sign up / Create an account Sign In Get the Top Real Estate App 4.8 130K Ratings View other HAR apps -> Home Values Home Values Home Values Search Track Home Value Compare Home Values Instantly List of Appraisal Districts Home Value Resource Videos About Home Values Home Selling Tips & Tools Home Selling Resource Selling Q&A Latest Blogs about Selling Compare the value of your house! RealInsight (Newsletter) Home Buying Home Selling Investing Moving Home Repair Remodeling Appraisals Insurance Taxes Safety About HAR Member Area About HAR.com Newsroom HAR.com/Mobile Statistics HAR.com Ad Campaign Code of Ethics Contact Help Center Contact us Accessibility Privacy Policy Terms of Use HAR Sit...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "Apartments by Asset Living",
+            "url": "https://www.har.com/apartments/search?management=Asset+Living",
+            "snippet": "As a leading apartment management company, Asset Living is dedicated to providing residents with a superior living experience. 114 units 1,700 - 1,770 Sqft ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Asset Living",
+            "url": "https://www.linkedin.com/company/asset-living",
+            "snippet": "Asset Living is a third-party management firm and a proven partner in fostering thriving communities nationwide. Founded in 1986, Asset Living has decades of ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Asset Living | Nationwide Property Management",
+            "url": "https://www.assetliving.com/",
+            "snippet": "Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio,"
+          },
+          {
+            "source": "Serper",
+            "title": "Asset Living Overview",
+            "url": "https://www.assetliving.com/about/overview",
+            "snippet": "Founded in 1986, Asset Living is an award-winning third party property management partner serving customers and communities throughout the United States."
+          },
+          {
+            "source": "Serper",
+            "title": "Property Management Portfolio",
+            "url": "https://www.assetliving.com/property-management/portfolio",
+            "snippet": "Managing Properties Nationwide. Seamless support and optimal performance delivered to our diverse range of communities across the entire country."
+          }
+        ],
+        "property_search_snippets": [
+          {
+            "source": "Serper Property",
+            "title": "Novel Midtown is a pet-friendly apartment community in ...",
+            "url": "https://novelmidtownatl.com/",
+            "snippet": "Novel Midtown in Atlanta, GA offers Studio, 1, 2, or 3 bedroom apartments for rent. On 13+ month leases! Call us at 404.620.6260. Call us at 404.620.6260"
+          },
+          {
+            "source": "Serper Property",
+            "title": "Novel Midtown Atlanta, Georgia",
+            "url": "https://www.nilesbolton.com/multifamily-novel-midtown",
+            "snippet": "Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "Project Spotlight: Novel Midtown Atlanta, GA",
+            "url": "https://www.nilesbolton.com/news/project-spotlight-novel-midtown",
+            "snippet": "The 412,000 square-foot residential tower contains 340 apartments with penthouse units, and 10,700+ square feet of upscale amenities."
+          },
+          {
+            "source": "Serper Property",
+            "title": "NOVEL Midtown | Midtown Atlanta",
+            "url": "https://www.midtownatl.com/view/novel-midtown",
+            "snippet": "14 Number of Residential Units: 340 Year Completed: 2022. Offering studio, 1-, 2-, & 3-bedroom apartment homes."
+          }
+        ],
+        "property_search_matches_address": true,
+        "osm_property_class": null,
+        "osm_property_type": null,
+        "osm_display_name": null,
+        "business_type_signals": [
+          "apartment",
+          "apartments",
+          "communities",
+          "property management",
+          "real estate"
+        ],
+        "leasing_volume_signals": [
+          "communities",
+          "nationwide",
+          "portfolio",
+          "properties",
+          "units",
+          "114 units"
+        ],
+        "operational_complexity_signals": [
+          "residents"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [
+          "apartment",
+          "apartments",
+          "community",
+          "homes",
+          "residential"
+        ],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "across",
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "over 455K units",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "over 455K units; 500+ clients; nationwide, coast-to-coast",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Asset Living | Nationwide Property Management Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio, https://www.assetliving.com/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "over 455K units; 500+ clients; nationwide, coast-to-coast",
+            "interpreted_bucket": "Very Strong",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {
+          "property_type": {
+            "raw_evidence": "Novel Midtown Atlanta, Georgia Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ... https://www.nilesbolton.com/multifamily-novel-midtown",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "Apartment community with 340 luxury apartment units",
+            "interpreted_bucket": "Multifamily",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "property_scale": {
+            "raw_evidence": "Novel Midtown Atlanta, Georgia Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ... https://www.nilesbolton.com/multifamily-novel-midtown",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "340 luxury apartment units in 14 stories",
+            "interpreted_bucket": "Large",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "leasing_activity": {
+            "raw_evidence": "Novel Midtown is a pet-friendly apartment community in ... Novel Midtown in Atlanta, GA offers Studio, 1, 2, or 3 bedroom apartments for rent. On 13+ month leases! Call us at 404.620.6260. Call us at 404.620.6260 https://novelmidtownatl.com/",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "Studio, 1, 2, or 3 bedroom apartments for rent; phone number provided",
+            "interpreted_bucket": "Active",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 3; Census Tract 12.06; Fulton County; Georgia ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 001206, block group 3; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "Atlanta city, Georgia population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 499,287 in the 2023 ACS 5-year estimate (+4.1% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "Apartments by Asset Living - HAR.com",
+          "url": "https://www.har.com/apartments/search?management=Asset+Living",
+          "snippet": "Sign up / Create an account Sign In Get the Top Real Estate App 4.8 130K Ratings View other HAR apps -> Home Values Home Values Home Values Search Track Home Value Compare Home Values Instantly List of Appraisal Districts Home Value Resource Videos About Home Values Home Selling Tips & Tools Home Selling Resource Selling Q&A Latest Blogs about Selling Compare the value of your house! RealInsight (Newsletter) Home Buying Home Selling Investing Moving Home Repair Remodeling Appraisals Insurance Taxes Safety About HAR Member Area About HAR.com Newsroom HAR.com/Mobile Statistics HAR.com Ad Campaign Code of Ethics Contact Help Center Contact us Accessibility Privacy Policy Terms of Use HAR Sit..."
+        },
+        {
+          "source": "Serper",
+          "title": "Apartments by Asset Living",
+          "url": "https://www.har.com/apartments/search?management=Asset+Living",
+          "snippet": "As a leading apartment management company, Asset Living is dedicated to providing residents with a superior living experience. 114 units 1,700 - 1,770 Sqft ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Asset Living",
+          "url": "https://www.linkedin.com/company/asset-living",
+          "snippet": "Asset Living is a third-party management firm and a proven partner in fostering thriving communities nationwide. Founded in 1986, Asset Living has decades of ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Asset Living | Nationwide Property Management",
+          "url": "https://www.assetliving.com/",
+          "snippet": "Asset Living is the nation's leader in true third-party property management with over 455K units from coast-to-coast. With 500+ clients in our portfolio,"
+        },
+        {
+          "source": "Serper",
+          "title": "Asset Living Overview",
+          "url": "https://www.assetliving.com/about/overview",
+          "snippet": "Founded in 1986, Asset Living is an award-winning third party property management partner serving customers and communities throughout the United States."
+        },
+        {
+          "source": "Serper",
+          "title": "Property Management Portfolio",
+          "url": "https://www.assetliving.com/property-management/portfolio",
+          "snippet": "Managing Properties Nationwide. Seamless support and optimal performance delivered to our diverse range of communities across the entire country."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Novel Midtown is a pet-friendly apartment community in ...",
+          "url": "https://novelmidtownatl.com/",
+          "snippet": "Novel Midtown in Atlanta, GA offers Studio, 1, 2, or 3 bedroom apartments for rent. On 13+ month leases! Call us at 404.620.6260. Call us at 404.620.6260"
+        },
+        {
+          "source": "Serper Property",
+          "title": "Novel Midtown Atlanta, Georgia",
+          "url": "https://www.nilesbolton.com/multifamily-novel-midtown",
+          "snippet": "Novel Midtown offers 340 luxury apartment units in 14 stories overlooking the downtown connector. 340 units in studio, one-, two- and three-bedroom ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Project Spotlight: Novel Midtown Atlanta, GA",
+          "url": "https://www.nilesbolton.com/news/project-spotlight-novel-midtown",
+          "snippet": "The 412,000 square-foot residential tower contains 340 apartments with penthouse units, and 10,700+ square feet of upscale amenities."
+        },
+        {
+          "source": "Serper Property",
+          "title": "NOVEL Midtown | Midtown Atlanta",
+          "url": "https://www.midtownatl.com/view/novel-midtown",
+          "snippet": "14 Number of Residential Units: 340 Year Completed: 2022. Offering studio, 1-, 2-, & 3-bedroom apartment homes."
+        }
+      ],
+      "missing_data": [
+        "OSM property metadata was unavailable from Nominatim."
+      ],
+      "why_this_lead": [
+        "Mid-size population base provides some market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "Novel Midtown\u2019s multifamily setting and large community footprint create steady pressure to convert prospects quickly while keeping onsite teams focused on resident needs.",
+        "At a high-traffic Atlanta location, leasing teams likely juggle tour coordination, follow-up, and prospect questions across multiple channels\u2014creating opportunities to reduce manual handoffs.",
+        "For a national operator like Asset Living, a repeatable leasing workflow at communities such as Novel Midtown can improve response consistency without adding onsite workload.",
+        "The clearest ROI conversation is around faster prospect engagement, fewer missed follow-ups, and giving leasing staff more time for tours and resident-facing work."
+      ],
+      "outreach_email": "Subject: Reducing leasing follow-up work at Novel Midtown\n\nHi Avery,\n\nAt a large Midtown community like Novel Midtown, it\u2019s easy for tour requests, prospect questions, and follow-ups to compete with the onsite team\u2019s resident workload.\n\nWe help multifamily teams automate the routine leasing conversations and handoffs so prospects get timely responses and staff can spend more time on high-intent tours and resident needs.\n\nWould you be open to a brief conversation about where follow-up volume is creating the most friction at Novel Midtown?",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Jordan Lee",
+        "email": "jordan.lee@avaloncommunities.com",
+        "company": "AvalonBay Communities",
+        "address": "AVA Nob Hill, 965 Sutter St",
+        "city": "San Francisco",
+        "state": "CA",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 37,
+          "max_score": 45,
+          "reasons": [
+            "Large city population supports market scale.",
+            "High city median rent indicates strong rental market value.",
+            "Population decline is noted but treated as a light macro signal.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "Neighborhood median income indicates a moderate economic base.",
+            "Moderate vacancy is treated as a healthy neutral leasing-pressure signal.",
+            "High no-vehicle household share suggests urban access and density.",
+            "High public-transit commute share supports access-oriented rental demand.",
+            "High walking commute share suggests strong local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 39,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Very High from source-backed evidence.",
+            "Product fit classified as Very Strong from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 8,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Unknown; contributes 3 points.",
+            "Property scale classified as Unknown; contributes 3 points.",
+            "Leasing activity classified as Unknown; contributes 2 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 8,
+              "max_score": 12,
+              "detail": "population 836,321 \u00b7 median rent $2,419 \u00b7 -3.9% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 83% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 5,
+              "max_score": 8,
+              "detail": "median income $55,185"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 5,
+              "max_score": 6,
+              "detail": "vacancy 14%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 9,
+              "max_score": 9,
+              "detail": "no vehicle 64% \u00b7 transit 23% \u00b7 walk 30%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 13,
+            "operational_complexity": 13,
+            "product_fit": 13
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "98,271 apartment homes",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "98,271 apartment homes; 3,000 associates",
+              "interpreted_bucket": "Very High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "Leading multifamily real estate investment trust; 98,271 apartment homes",
+              "interpreted_bucket": "Very Strong",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 13,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 3,
+            "property_scale": 3,
+            "leasing_activity": 2
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No property-type evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No property-scale evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No leasing-activity evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 2,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 84,
+        "priority": "High",
+        "company_fit_label": "Strong fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "AVA Nob Hill, 965 Sutter St, San Francisco, CA",
+        "matched_address": "965 SUTTER ST, SAN FRANCISCO, CA, 94109",
+        "latitude": 37.788195404247,
+        "longitude": -122.416222415025,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 1; Census Tract 120.02; San Francisco County; California",
+        "state_fips": "06",
+        "county_fips": "075",
+        "tract": "012002",
+        "block_group": "1",
+        "population": 836321,
+        "population_growth_rate": -0.0387601086841585,
+        "median_gross_rent": 2419,
+        "median_income": 55185,
+        "renter_share": 0.8329133610315831,
+        "housing_units": 1083,
+        "vacancy_rate": 0.14248857987310773,
+        "no_vehicle_household_share": 0.6431199411331862,
+        "public_transit_commute_share": 0.23425692695214106,
+        "walking_commute_share": 0.2963895885810244,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "avaloncommunities.com",
+        "website_url": "https://www.avaloncommunities.com/about-us/",
+        "website_title": "AvalonBay Communities",
+        "website_description": null,
+        "website_snippet": "Avalon Communities Locations About Us Corporate Responsibility Leadership Newsroom Investor Relations Retail Mixed Use Development Careers Investors Residents Create Account Login About Us AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) focused on developing, redeveloping, acquiring, and managing distinctive communities in select U.S. 98,271 Apartment Homes 3,000 Associates A3 | A- Moody's | S&P Credit Rating S&P 500 Company 4.9% Annualized Dividend Growth since 2000 10.4% Annualized TSR Growth since IPO A | A- MSCI ESG Rating |CDP Climate Change Score Top Workplace USA Today Data and information as of 3/31/2026. Deep commitme...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "AvalonBay Communities",
+            "url": "https://en.wikipedia.org/wiki/AvalonBay_Communities",
+            "snippet": "AvalonBay Communities, Inc. is a publicly traded real estate investment trust that invests in apartments. in Arlington, VA (2022) US$2.301 billion (2020)"
+          },
+          {
+            "source": "Serper",
+            "title": "AvalonBay Communities",
+            "url": "https://www.linkedin.com/company/avalonbay-communities",
+            "snippet": "Creating a better way to live. Property Management, Development, Redevelopment, Construction, Customer Service, and Hospitality"
+          },
+          {
+            "source": "Serper",
+            "title": "AvalonBay Communities, Inc. (NYSE: AVB)",
+            "url": "https://www.avaloncommunities.com/about-us/",
+            "snippet": "AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ..."
+          },
+          {
+            "source": "Serper",
+            "title": "AvalonBay Communities: Apartments for rent",
+            "url": "https://www.avaloncommunities.com/homepage",
+            "snippet": "We offer fully furnished apartments with lease terms as short as 30 days at select communities. These apartments feature all of the furniture that you need to ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Company Information - AvalonBay Communities, Inc.",
+            "url": "https://investors.avalonbay.com/company-information",
+            "snippet": "AVB) is a leading multifamily real estate investment trust (REIT) of developing, redeveloping, acquiring and managing distinctive apartment communities (703) ..."
+          }
+        ],
+        "property_search_snippets": [],
+        "property_search_matches_address": false,
+        "osm_property_class": null,
+        "osm_property_type": null,
+        "osm_display_name": null,
+        "business_type_signals": [
+          "apartment",
+          "apartments",
+          "communities",
+          "multifamily",
+          "property management",
+          "real estate"
+        ],
+        "leasing_volume_signals": [
+          "communities",
+          "homes",
+          "locations",
+          "portfolio"
+        ],
+        "operational_complexity_signals": [
+          "lease",
+          "residents"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "locations"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "98,271 apartment homes",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "98,271 apartment homes; 3,000 associates",
+            "interpreted_bucket": "Very High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ... https://www.avaloncommunities.com/about-us/",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "Leading multifamily real estate investment trust; 98,271 apartment homes",
+            "interpreted_bucket": "Very Strong",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {}
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 1; Census Tract 120.02; San Francisco County; California ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 012002, block group 1; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "San Francisco city, California population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 836,321 in the 2023 ACS 5-year estimate (-3.9% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "AvalonBay Communities",
+          "url": "https://www.avaloncommunities.com/about-us/",
+          "snippet": "Avalon Communities Locations About Us Corporate Responsibility Leadership Newsroom Investor Relations Retail Mixed Use Development Careers Investors Residents Create Account Login About Us AvalonBay Communities, Inc. (NYSE: AVB) AvalonBay is a leading multifamily real estate investment trust (REIT) focused on developing, redeveloping, acquiring, and managing distinctive communities in select U.S. 98,271 Apartment Homes 3,000 Associates A3 | A- Moody's | S&P Credit Rating S&P 500 Company 4.9% Annualized Dividend Growth since 2000 10.4% Annualized TSR Growth since IPO A | A- MSCI ESG Rating |CDP Climate Change Score Top Workplace USA Today Data and information as of 3/31/2026. Deep commitme..."
+        },
+        {
+          "source": "Serper",
+          "title": "AvalonBay Communities",
+          "url": "https://en.wikipedia.org/wiki/AvalonBay_Communities",
+          "snippet": "AvalonBay Communities, Inc. is a publicly traded real estate investment trust that invests in apartments. in Arlington, VA (2022) US$2.301 billion (2020)"
+        },
+        {
+          "source": "Serper",
+          "title": "AvalonBay Communities",
+          "url": "https://www.linkedin.com/company/avalonbay-communities",
+          "snippet": "Creating a better way to live. Property Management, Development, Redevelopment, Construction, Customer Service, and Hospitality"
+        },
+        {
+          "source": "Serper",
+          "title": "AvalonBay Communities, Inc. (NYSE: AVB)",
+          "url": "https://www.avaloncommunities.com/about-us/",
+          "snippet": "AvalonBay is a leading multifamily real estate investment trust (REIT) 98,271 Apartment Homes 3,000 Associates. Unmatched portfolio quality. Optimize Portfolio ..."
+        },
+        {
+          "source": "Serper",
+          "title": "AvalonBay Communities: Apartments for rent",
+          "url": "https://www.avaloncommunities.com/homepage",
+          "snippet": "We offer fully furnished apartments with lease terms as short as 30 days at select communities. These apartments feature all of the furniture that you need to ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Company Information - AvalonBay Communities, Inc.",
+          "url": "https://investors.avalonbay.com/company-information",
+          "snippet": "AVB) is a leading multifamily real estate investment trust (REIT) of developing, redeveloping, acquiring and managing distinctive apartment communities (703) ..."
+        }
+      ],
+      "missing_data": [
+        "OSM property metadata was unavailable from Nominatim.",
+        "Property search returned snippets, but none matched the submitted or resolved property.",
+        "OpenAI property classification skipped because no property evidence was available."
+      ],
+      "why_this_lead": [
+        "Large city population supports market scale.",
+        "High city median rent indicates strong rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "AVA Nob Hill\u2019s San Francisco location likely creates a high-touch leasing environment where fast follow-up and consistent resident communication matter.",
+        "At AvalonBay scale, small improvements in leasing response times and handoffs can reduce onsite administrative workload across a large portfolio.",
+        "A centralized workflow for prospect questions, tour coordination, and routine resident requests can help onsite teams spend more time on conversions and less time managing repetitive inbox traffic.",
+        "For a community like AVA Nob Hill, cleaner visibility into lead status and follow-up ownership can help prevent prospects from slipping between tour, application, and move-in steps."
+      ],
+      "outreach_email": "Subject: Reducing leasing admin at AVA Nob Hill\n\nHi Jordan,\n\nWith the pace of leasing and resident communication at a San Francisco community like AVA Nob Hill, onsite teams can lose a lot of time to repeat questions, follow-ups, and handoffs between tours, applications, and move-ins.\n\nWe help property teams automate those routine leasing workflows while keeping clear visibility into every prospect and next step\u2014so staff can focus more on tours, conversions, and resident experience.\n\nWould you be open to a brief conversation about where leasing admin is creating the most onsite drag today?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Daniel Kim",
+        "email": "d.kim@lincolnapts.com",
+        "company": "Lincoln Property Company",
+        "address": "OneEleven, 111 W Wacker Dr",
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 37,
+          "max_score": 45,
+          "reasons": [
+            "Large population base supports market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Population decline is noted but treated as a light macro signal.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "High neighborhood median income indicates a strong economic base.",
+            "Elevated vacancy mildly tempers the local leasing-pressure signal.",
+            "High no-vehicle household share suggests urban access and density.",
+            "Some public-transit commute share supports access-oriented demand.",
+            "High walking commute share suggests strong local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 19,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as High from source-backed evidence.",
+            "Product fit classified as Strong from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 16,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Multifamily; contributes 6 points.",
+            "Property scale classified as Large; contributes 6 points.",
+            "Leasing activity classified as Active; contributes 4 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 8,
+              "max_score": 12,
+              "detail": "population 2,707,648 \u00b7 median rent $1,380 \u00b7 -0.4% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 82% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 8,
+              "max_score": 8,
+              "detail": "median income $124,641"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 3,
+              "max_score": 6,
+              "detail": "vacancy 16%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 8,
+              "max_score": 9,
+              "detail": "no vehicle 60% \u00b7 transit 11% \u00b7 walk 38%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 0,
+            "operational_complexity": 9,
+            "product_fit": 10
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Properties | Search & Featured Projects | Lincoln Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management. Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights S...",
+              "evidence_source": "website_snippet",
+              "parsed_value": "No explicit unit, home, or property count",
+              "interpreted_bucket": "Unknown",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 0,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "Lincoln Property Company Lincoln is one of the largest diversified real estate services companies, with 35 offices across the United States, the United Kingdom, and Europe. https://www.linkedin.com/company/lincolnpropertycompany",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "35 offices",
+              "interpreted_bucket": "High",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 9,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Properties | Search & Featured Projects | Lincoln Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management. Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights S...",
+              "evidence_source": "website_snippet",
+              "parsed_value": "Residential and commercial property leasing and management services",
+              "interpreted_bucket": "Strong",
+              "confidence": "Medium",
+              "classifier": "openai_classifier",
+              "score_contribution": 10,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 6,
+            "property_scale": 6,
+            "leasing_activity": 4
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "OSM Nominatim returned apartments for OneEleven, 111, West Upper Wacker Drive, Theatre District, Loop, Chicago, South Chicago Township, Cook County, Illinois, 60601, United States.",
+              "evidence_source": "osm_nominatim",
+              "parsed_value": "apartments",
+              "interpreted_bucket": "Multifamily",
+              "confidence": "High",
+              "classifier": "rule_fallback",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "OneEleven OneEleven opened in 2014 and includes over 500 apartments. In January 2015, the building was sold, setting a new price record for apartment buildings in Chicago ... https://handelarchitects.com/project/oneeleven",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "over 500 apartments",
+              "interpreted_bucket": "Large",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 6,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "Downtown Chicago Luxury Apartment Rentals | One Eleven Select Bed Studio 1 Bedroom 2 Bedroom 3 Bedroom 11,000 12,000 13,000 14,000 that is available. OneEleven the ultimate luxury apartment in Chicago. 111 W Upper ... https://www.oneelevenchicago.com/",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "available apartments; luxury apartment rentals",
+              "interpreted_bucket": "Active",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 72,
+        "priority": "Medium",
+        "company_fit_label": "Unclear fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "OneEleven, 111 W Wacker Dr, Chicago, IL",
+        "matched_address": "111 W WACKER DR, CHICAGO, IL, 60601",
+        "latitude": 41.886816849271,
+        "longitude": -87.631217116861,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 1; Census Tract 8391; Cook County; Illinois",
+        "state_fips": "17",
+        "county_fips": "031",
+        "tract": "839100",
+        "block_group": "1",
+        "population": 2707648,
+        "population_growth_rate": -0.004012057876335039,
+        "median_gross_rent": 1380,
+        "median_income": 124641,
+        "renter_share": 0.8180527273850646,
+        "housing_units": 4093,
+        "vacancy_rate": 0.15579653569221483,
+        "no_vehicle_household_share": 0.5953769712680924,
+        "public_transit_commute_share": 0.10733357066571733,
+        "walking_commute_share": 0.38127447490210037,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "lpc.com",
+        "website_url": "https://lpc.com/properties/",
+        "website_title": "Properties | Search & Featured Projects | Lincoln",
+        "website_description": "Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management.",
+        "website_snippet": "Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights See News & Insights Newsroom Insights & Research About Us More About Us History Mergers & Acquisitions Careers Leadership Find an Expert Contact Us Properties Overview For more than 60 years, Lincoln has been at the forefront of building and operating some of the world's most notable projects. Privacy Policy Do Not Sell/Share My Personal Info Your Privacy Choices Cookie Settings TREC Information About Broker Services TREC Consumer Protection Notice TREC Commission Information About Brokerage Ser...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "Lincoln Property Company",
+            "url": "https://www.linkedin.com/company/lincolnpropertycompany",
+            "snippet": "Lincoln is one of the largest diversified real estate services companies, with 35 offices across the United States, the United Kingdom, and Europe."
+          },
+          {
+            "source": "Serper",
+            "title": "Properties | Search & Featured Projects - Lincoln Property Company",
+            "url": "https://lpc.com/properties/",
+            "snippet": "Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management."
+          },
+          {
+            "source": "Serper",
+            "title": "Lincoln Property Company's Residential Division ...",
+            "url": "https://www.willowbridgepc.com/about/news/3057-lincoln-property-company-s-residential-division-rebrands-to-willow-bridge-property-company",
+            "snippet": "Lincoln Property Company's Residential Division is now Willow Bridge Property Company after unveiling a new name, logo and visual identity."
+          },
+          {
+            "source": "Serper",
+            "title": "Property Management | Management Services | Lincoln",
+            "url": "https://lpc.com/what-we-do/manage/property-management/",
+            "snippet": "We carefully manage balance sheets, income statements, cash flow statements, Our adept team manages lease & contract administration on your behalf, ensuring ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Lincoln Property Company",
+            "url": "https://www.stonepoint.com/company/lincoln-property-company/",
+            "snippet": "Lincoln Property Company is one of the nation's largest diversified commercial real estate operating companies offering a comprehensive suite of services."
+          }
+        ],
+        "property_search_snippets": [
+          {
+            "source": "Serper Property",
+            "title": "OneEleven",
+            "url": "https://handelarchitects.com/project/oneeleven",
+            "snippet": "OneEleven opened in 2014 and includes over 500 apartments. In January 2015, the building was sold, setting a new price record for apartment buildings in Chicago ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "Downtown Chicago Luxury Apartment Rentals | One Eleven",
+            "url": "https://www.oneelevenchicago.com/",
+            "snippet": "Select Bed Studio 1 Bedroom 2 Bedroom 3 Bedroom 11,000 12,000 13,000 14,000 that is available. OneEleven the ultimate luxury apartment in Chicago. 111 W Upper ..."
+          }
+        ],
+        "property_search_matches_address": true,
+        "osm_property_class": null,
+        "osm_property_type": "apartments",
+        "osm_display_name": "OneEleven, 111, West Upper Wacker Drive, Theatre District, Loop, Chicago, South Chicago Township, Cook County, Illinois, 60601, United States",
+        "business_type_signals": [
+          "communities",
+          "property management",
+          "real estate",
+          "residential"
+        ],
+        "leasing_volume_signals": [
+          "communities",
+          "locations",
+          "manages",
+          "properties"
+        ],
+        "operational_complexity_signals": [
+          "lease",
+          "leasing"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [
+          "apartment",
+          "apartments"
+        ],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "across",
+          "locations",
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Properties | Search & Featured Projects | Lincoln Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management. Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights S...",
+            "evidence_source": "website_snippet",
+            "parsed_value": "No explicit unit, home, or property count",
+            "interpreted_bucket": "Unknown",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "Lincoln Property Company Lincoln is one of the largest diversified real estate services companies, with 35 offices across the United States, the United Kingdom, and Europe. https://www.linkedin.com/company/lincolnpropertycompany",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "35 offices",
+            "interpreted_bucket": "High",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Properties | Search & Featured Projects | Lincoln Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management. Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights S...",
+            "evidence_source": "website_snippet",
+            "parsed_value": "Residential and commercial property leasing and management services",
+            "interpreted_bucket": "Strong",
+            "confidence": "Medium",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {
+          "property_type": {
+            "raw_evidence": "OneEleven OneEleven opened in 2014 and includes over 500 apartments. In January 2015, the building was sold, setting a new price record for apartment buildings in Chicago ... https://handelarchitects.com/project/oneeleven",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "over 500 apartments",
+            "interpreted_bucket": "Multifamily",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "property_scale": {
+            "raw_evidence": "OneEleven OneEleven opened in 2014 and includes over 500 apartments. In January 2015, the building was sold, setting a new price record for apartment buildings in Chicago ... https://handelarchitects.com/project/oneeleven",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "over 500 apartments",
+            "interpreted_bucket": "Large",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "leasing_activity": {
+            "raw_evidence": "Downtown Chicago Luxury Apartment Rentals | One Eleven Select Bed Studio 1 Bedroom 2 Bedroom 3 Bedroom 11,000 12,000 13,000 14,000 that is available. OneEleven the ultimate luxury apartment in Chicago. 111 W Upper ... https://www.oneelevenchicago.com/",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "available apartments; luxury apartment rentals",
+            "interpreted_bucket": "Active",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 1; Census Tract 8391; Cook County; Illinois ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 839100, block group 1; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "Chicago city, Illinois population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 2,707,648 in the 2023 ACS 5-year estimate (-0.4% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "Properties | Search & Featured Projects | Lincoln",
+          "url": "https://lpc.com/properties/",
+          "snippet": "Open main menu What We Do See What We Do Services Manage Lease Build Invest Corporate Solutions Property Types Locations Properties See Properties Property Search Featured Projects News & Insights See News & Insights Newsroom Insights & Research About Us More About Us History Mergers & Acquisitions Careers Leadership Find an Expert Contact Us Properties Overview For more than 60 years, Lincoln has been at the forefront of building and operating some of the world's most notable projects. Privacy Policy Do Not Sell/Share My Personal Info Your Privacy Choices Cookie Settings TREC Information About Broker Services TREC Consumer Protection Notice TREC Commission Information About Brokerage Ser..."
+        },
+        {
+          "source": "Serper",
+          "title": "Lincoln Property Company",
+          "url": "https://www.linkedin.com/company/lincolnpropertycompany",
+          "snippet": "Lincoln is one of the largest diversified real estate services companies, with 35 offices across the United States, the United Kingdom, and Europe."
+        },
+        {
+          "source": "Serper",
+          "title": "Properties | Search & Featured Projects - Lincoln Property Company",
+          "url": "https://lpc.com/properties/",
+          "snippet": "Explore Lincoln properties and featured projects. Search communities and commercial properties, and connect with Lincoln for leasing and management."
+        },
+        {
+          "source": "Serper",
+          "title": "Lincoln Property Company's Residential Division ...",
+          "url": "https://www.willowbridgepc.com/about/news/3057-lincoln-property-company-s-residential-division-rebrands-to-willow-bridge-property-company",
+          "snippet": "Lincoln Property Company's Residential Division is now Willow Bridge Property Company after unveiling a new name, logo and visual identity."
+        },
+        {
+          "source": "Serper",
+          "title": "Property Management | Management Services | Lincoln",
+          "url": "https://lpc.com/what-we-do/manage/property-management/",
+          "snippet": "We carefully manage balance sheets, income statements, cash flow statements, Our adept team manages lease & contract administration on your behalf, ensuring ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Lincoln Property Company",
+          "url": "https://www.stonepoint.com/company/lincoln-property-company/",
+          "snippet": "Lincoln Property Company is one of the nation's largest diversified commercial real estate operating companies offering a comprehensive suite of services."
+        },
+        {
+          "source": "Serper Property",
+          "title": "OneEleven",
+          "url": "https://handelarchitects.com/project/oneeleven",
+          "snippet": "OneEleven opened in 2014 and includes over 500 apartments. In January 2015, the building was sold, setting a new price record for apartment buildings in Chicago ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "Downtown Chicago Luxury Apartment Rentals | One Eleven",
+          "url": "https://www.oneelevenchicago.com/",
+          "snippet": "Select Bed Studio 1 Bedroom 2 Bedroom 3 Bedroom 11,000 12,000 13,000 14,000 that is available. OneEleven the ultimate luxury apartment in Chicago. 111 W Upper ..."
+        }
+      ],
+      "missing_data": [],
+      "why_this_lead": [
+        "Large population base supports market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "OneEleven\u2019s large multifamily setting creates a steady flow of leasing questions, tour coordination, and follow-up work that can accumulate quickly for onsite teams.",
+        "A high-rise downtown community has more moving parts than a small property\u2014availability changes, prospect handoffs, resident requests, and leasing coverage all need to stay coordinated.",
+        "Lincoln\u2019s broad property-management footprint makes it valuable to standardize the leasing workflow while still giving each onsite team a way to handle property-specific questions.",
+        "Automating repetitive prospect and resident conversations can help the OneEleven team respond faster without adding to onsite workload, especially during high-tour or renewal periods."
+      ],
+      "outreach_email": "Subject: Reducing leasing-team lift at OneEleven\n\nHi Daniel,\n\nAt a large downtown community like OneEleven, the onsite team is likely balancing tours, availability questions, follow-ups, and resident requests at the same time.\n\nWe help multifamily teams automate the repetitive leasing conversations and routing that otherwise pull staff away from high-value prospects and in-person resident work. The goal is faster responses and cleaner handoffs\u2014without asking the team to add another manual workflow.\n\nWould you be open to a brief conversation about where leasing volume or after-hours inquiries create the most lift for the OneEleven team?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Luis Rodriguez",
+        "email": "l.rodriguez@smallprops.com",
+        "company": "Small Properties LLC",
+        "address": "1010 East 178th St",
+        "city": "Bronx",
+        "state": "NY",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 32,
+          "max_score": 45,
+          "reasons": [
+            "Large population base supports market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Stable or moderate population growth supports leasing demand.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "Neighborhood income data was unavailable.",
+            "Moderate vacancy is treated as a healthy neutral leasing-pressure signal.",
+            "High no-vehicle household share suggests urban access and density.",
+            "High public-transit commute share supports access-oriented rental demand.",
+            "Some walking commute share supports local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 8,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Unknown from source-backed evidence.",
+            "Product fit classified as Unknown from source-backed evidence.",
+            "Operational complexity is capped at Low because leasing volume is Low."
+          ]
+        },
+        "property_fit": {
+          "score": 9,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Residential; contributes 4 points.",
+            "Property scale classified as Unknown; contributes 3 points.",
+            "Leasing activity classified as Unknown; contributes 2 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 9,
+              "max_score": 12,
+              "detail": "population 8,516,202 \u00b7 median rent $1,779 \u00b7 +0.9% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 85% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 0,
+              "max_score": 8,
+              "detail": null
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 5,
+              "max_score": 6,
+              "detail": "vacancy 7%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 8,
+              "max_score": 9,
+              "detail": "no vehicle 79% \u00b7 transit 53% \u00b7 walk 4%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 4,
+            "operational_complexity": 4,
+            "product_fit": 0
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "No company-specific unit or property count identified",
+              "interpreted_bucket": "Low",
+              "confidence": "Low",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "Low leasing volume limits operational complexity.",
+              "interpreted_bucket": "Low",
+              "confidence": "Low",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+              "evidence_source": "search_snippets[1]",
+              "parsed_value": "Company role evidence exists, but residential property-management ICP fit is not clearly established",
+              "interpreted_bucket": "Unknown",
+              "confidence": "Low",
+              "classifier": "openai_classifier",
+              "score_contribution": 0,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 4,
+            "property_scale": 3,
+            "leasing_activity": 2
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "OSM Nominatim returned house for 1010, East 178th Street, Lambert Houses, The Bronx, Bronx County, New York, 10460, United States.",
+              "evidence_source": "osm_nominatim",
+              "parsed_value": "house",
+              "interpreted_bucket": "Residential",
+              "confidence": "High",
+              "classifier": "rule_fallback",
+              "score_contribution": 4,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No property-scale evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No leasing-activity evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 2,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 49,
+        "priority": "Low",
+        "company_fit_label": "Unclear fit",
+        "confidence": "High"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "1010 East 178th St, Bronx, NY",
+        "matched_address": "1010 E 178TH ST, BRONX, NY, 10460",
+        "latitude": 40.841401581671,
+        "longitude": -73.880563818554,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 3; Census Tract 361; Bronx County; New York",
+        "state_fips": "36",
+        "county_fips": "005",
+        "tract": "036100",
+        "block_group": "3",
+        "population": 8516202,
+        "population_growth_rate": 0.008584967300522887,
+        "median_gross_rent": 1779,
+        "median_income": null,
+        "renter_share": 0.85,
+        "housing_units": 411,
+        "vacancy_rate": 0.07422682235789749,
+        "no_vehicle_household_share": 0.7854721549636804,
+        "public_transit_commute_share": 0.5267412935323383,
+        "walking_commute_share": 0.036069651741293535,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": null,
+        "website_url": null,
+        "website_title": null,
+        "website_description": null,
+        "website_snippet": null,
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "The Ownership and Management of Small Multifamily Rental Properties",
+            "url": "https://ternercenter.berkeley.edu/wp-content/uploads/2024/01/Ownership-and-Management-of-Small-Multifamily-Rental-Properties-January-2024-Final.pdf",
+            "snippet": "portfolio size (9 units or less, 10-24 units, 25-49 units, and 50 units or more), Many others have very small portfolios and are only part-time ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC",
+            "url": "https://www.linkedin.com/in/nick-small-49897b66",
+            "snippet": "Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Highland Management Group, Inc.",
+            "url": "https://highlandapts.com/",
+            "snippet": "For over 60 years, Highland Management Group has proudly managed rental apartment and townhome communities across the Twin Cities metro area."
+          },
+          {
+            "source": "Serper",
+            "title": "Small multi-family homes for sale in Indianapolis",
+            "url": "https://www.facebook.com/groups/2027530051069824/posts/2376219406200885/",
+            "snippet": "Portfolio Summary Total Asking Price: $817,000 Total Units: 13 Gross Rents: $9,875/month ($118,500/year) Expenses (20%): $23,700/year ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Kuefler Properties LLC - Centre Square Apartments - MN.gov",
+            "url": "https://mn.gov/adresources/search/86448e72-a4ba-503c-9d20-15e6150292f4",
+            "snippet": "Privately owned building whose management contracts with either the U.S. Department of Housing and Urban Development (HUD) or the Minnesota Housing Finance ..."
+          }
+        ],
+        "property_search_snippets": [],
+        "property_search_matches_address": false,
+        "osm_property_class": null,
+        "osm_property_type": "house",
+        "osm_display_name": "1010, East 178th Street, Lambert Houses, The Bronx, Bronx County, New York, 10460, United States",
+        "business_type_signals": [
+          "apartment",
+          "apartments",
+          "communities",
+          "multifamily"
+        ],
+        "leasing_volume_signals": [
+          "communities",
+          "homes",
+          "managed",
+          "portfolio",
+          "properties",
+          "regional",
+          "units",
+          "9 units",
+          "24 units",
+          "49 units",
+          "50 units"
+        ],
+        "operational_complexity_signals": [],
+        "product_fit_signals": [],
+        "property_signals": [],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "across",
+          "regional",
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "No company-specific unit or property count identified",
+            "interpreted_bucket": "Unknown",
+            "confidence": "Low",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "No company-specific operational scale or workflow evidence identified",
+            "interpreted_bucket": "Unknown",
+            "confidence": "Low",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ... https://www.linkedin.com/in/nick-small-49897b66",
+            "evidence_source": "search_snippets[1]",
+            "parsed_value": "Company role evidence exists, but residential property-management ICP fit is not clearly established",
+            "interpreted_bucket": "Unknown",
+            "confidence": "Low",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {}
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 3; Census Tract 361; Bronx County; New York ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 036100, block group 3; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "New York city, New York population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 8,516,202 in the 2023 ACS 5-year estimate (+0.9% since 2018)."
+        },
+        {
+          "source": "Serper",
+          "title": "The Ownership and Management of Small Multifamily Rental Properties",
+          "url": "https://ternercenter.berkeley.edu/wp-content/uploads/2024/01/Ownership-and-Management-of-Small-Multifamily-Rental-Properties-January-2024-Final.pdf",
+          "snippet": "portfolio size (9 units or less, 10-24 units, 25-49 units, and 50 units or more), Many others have very small portfolios and are only part-time ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Nick Small - Assistant To The Regional Manager at Small Properties, LLC",
+          "url": "https://www.linkedin.com/in/nick-small-49897b66",
+          "snippet": "Assistant To The Regional Manager at Small Properties, LLC \u00b7 Experience: Small Properties, LLC \u00b7 Education: University of Arizona \u00b7 Location: United States ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Highland Management Group, Inc.",
+          "url": "https://highlandapts.com/",
+          "snippet": "For over 60 years, Highland Management Group has proudly managed rental apartment and townhome communities across the Twin Cities metro area."
+        },
+        {
+          "source": "Serper",
+          "title": "Small multi-family homes for sale in Indianapolis",
+          "url": "https://www.facebook.com/groups/2027530051069824/posts/2376219406200885/",
+          "snippet": "Portfolio Summary Total Asking Price: $817,000 Total Units: 13 Gross Rents: $9,875/month ($118,500/year) Expenses (20%): $23,700/year ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Kuefler Properties LLC - Centre Square Apartments - MN.gov",
+          "url": "https://mn.gov/adresources/search/86448e72-a4ba-503c-9d20-15e6150292f4",
+          "snippet": "Privately owned building whose management contracts with either the U.S. Department of Housing and Urban Development (HUD) or the Minnesota Housing Finance ..."
+        }
+      ],
+      "missing_data": [
+        "Median income was unavailable from ACS.",
+        "Property search returned snippets, but none matched the submitted or resolved property.",
+        "Company website metadata was unavailable for https://ternercenter.berkeley.edu/wp-content/uploads/2024/01/Ownership-and-Management-of-Small-Multifamily-Rental-Properties-January-2024-Final.pdf.",
+        "OpenAI property classification skipped because no property evidence was available."
+      ],
+      "why_this_lead": [
+        "Large population base supports market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "For a Bronx residential property, fast follow-up and a consistent leasing workflow can reduce time spent coordinating inquiries, showings, and application status updates.",
+        "A streamlined renter communication process can help keep onsite and management staff focused on exceptions rather than repetitive prospect questions and scheduling.",
+        "Centralizing prospect conversations and next steps creates a clearer handoff from inquiry to tour to application, especially when multiple people touch leasing activity.",
+        "Even with a smaller property footprint, reducing manual follow-up can improve response consistency without adding onsite workload."
+      ],
+      "outreach_email": "Subject: Less leasing follow-up at 1010 E 178th\n\nHi Luis,\n\nI\u2019m reaching out because leasing at a residential property can create a lot of repeat work\u2014responding to inquiries, coordinating tours, and keeping prospects moving toward an application.\n\nWe help property teams automate the routine follow-up and keep every prospect conversation in one place, so staff can spend less time chasing updates and more time handling the exceptions that need attention.\n\nWould a quick conversation be worthwhile to see whether this could take some leasing admin off your team\u2019s plate at 1010 E 178th?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "Casey Morgan",
+        "email": "casey@jll.com",
+        "company": "JLL",
+        "address": "One World Trade Center, 285 Fulton St",
+        "city": "New York",
+        "state": "NY",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 33,
+          "max_score": 45,
+          "reasons": [
+            "Large population base supports market scale.",
+            "Moderate city median rent supports rental market value.",
+            "Stable or moderate population growth supports leasing demand.",
+            "Very high neighborhood renter share indicates strong local rental demand.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "Neighborhood income data was unavailable.",
+            "Moderate vacancy is treated as a healthy neutral leasing-pressure signal.",
+            "High no-vehicle household share suggests urban access and density.",
+            "High public-transit commute share supports access-oriented rental demand.",
+            "High walking commute share suggests strong local walkability."
+          ]
+        },
+        "company_fit": {
+          "score": 9,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as High from source-backed evidence.",
+            "Product fit classified as Unknown from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 6,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Commercial; contributes 0 points.",
+            "Property scale classified as Large; contributes 3 points.",
+            "Leasing activity classified as Active; contributes 3 points.",
+            "Property Fit capped at 6 because property type is non-residential."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 9,
+              "max_score": 12,
+              "detail": "population 8,516,202 \u00b7 median rent $1,779 \u00b7 +0.9% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 10,
+              "max_score": 10,
+              "detail": "renter share 85% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 0,
+              "max_score": 8,
+              "detail": null
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 5,
+              "max_score": 6,
+              "detail": "vacancy 6%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 9,
+              "max_score": 9,
+              "detail": "no vehicle 87% \u00b7 transit 50% \u00b7 walk 20%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 0,
+            "operational_complexity": 9,
+            "product_fit": 0
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Property management services Our property management technology is built to address today's toughest operational challenges, with AI-powered tools and insights that drive efficiency, ... https://www.jll.com/en-us/services/property-management",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "No explicit unit, property, home, or leasing-volume count provided",
+              "interpreted_bucket": "Unknown",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 0,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "JLL (company) Jones Lang LaSalle Incorporated (JLL) is an American real estate services company headquartered in Chicago. The company has offices in 80 countries. https://en.wikipedia.org/wiki/JLL_(company)",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "Offices in 80 countries",
+              "interpreted_bucket": "High",
+              "confidence": "Medium",
+              "classifier": "openai_classifier",
+              "score_contribution": 9,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Commercial real estate trends and insights JLL's regular view on global real estate dynamics, covering: investment, office, logistics, retail, hotels and living, as well as CRE market trends. https://www.jll.com/en-us/insights",
+              "evidence_source": "search_snippets[3]",
+              "parsed_value": "Real estate coverage includes investment, office, logistics, retail, hotels, and living",
+              "interpreted_bucket": "Unknown",
+              "confidence": "Medium",
+              "classifier": "openai_classifier",
+              "score_contribution": 0,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 0,
+            "property_scale": 3,
+            "leasing_activity": 3
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "One World Trade Center - Availabilities One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office. https://www.onewtc.com/availabilities/",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "Office",
+              "interpreted_bucket": "Commercial",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 0,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "One World Trade Center The 3.1 million-square-foot LEED Gold Certified skyscraper features premier office space, a tenant exclusive amenity floor, and some of the most spectacular ... https://www.explorewtc.com/content/wtc/en/local/learn-about-wtc/one-world-trade-center.html Capped because property type is non-residential.",
+              "evidence_source": "search_snippets[2]",
+              "parsed_value": "3.1 million-square-foot skyscraper",
+              "interpreted_bucket": "Large",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "One World Trade Center - Availabilities One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office. https://www.onewtc.com/availabilities/ Capped because property type is non-residential.",
+              "evidence_source": "search_snippets[0]",
+              "parsed_value": "Immediate availability; office space",
+              "interpreted_bucket": "Active",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 3,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 48,
+        "priority": "Low",
+        "company_fit_label": "Unclear fit",
+        "confidence": "Medium"
+      },
+      "address_resolution": {
+        "confidence": "Medium",
+        "method": "coordinate_fallback",
+        "input_address": "One World Trade Center, 285 Fulton St, New York, NY",
+        "matched_address": "One World Trade Center, 285, Fulton Street, Battery Park City, Lower Manhattan, Manhattan, New York County, New York, 10048, United States",
+        "latitude": 40.7129992,
+        "longitude": -74.0131894,
+        "explanation": "We could not find a direct Census match for the submitted address, so we used coordinate-based resolution. The fallback returned a location that appears to match the submitted address or property area, and Census mapped that coordinate to a tract/block group. The Market Fit score is based on that resolved geography."
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 5; Census Tract 13; New York County; New York",
+        "state_fips": "36",
+        "county_fips": "061",
+        "tract": "001300",
+        "block_group": "5",
+        "population": 8516202,
+        "population_growth_rate": 0.008584967300522887,
+        "median_gross_rent": 1779,
+        "median_income": null,
+        "renter_share": 0.85,
+        "housing_units": 30,
+        "vacancy_rate": 0.060653188180404355,
+        "no_vehicle_household_share": 0.8706689536878216,
+        "public_transit_commute_share": 0.5,
+        "walking_commute_share": 0.20166041778253882,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "jll.com",
+        "website_url": "https://www.jll.com/en-us/services/portfolio-management",
+        "website_title": "Real estate portfolio management - Strategic planning | JLL JLL Logo JLL Logo JLL Logo JLL Logo",
+        "website_description": "Flexible and efficient real estate portfolio management delivers outstanding results for owners and investors, including workplace agility and lower costs.",
+        "website_snippet": "Skip to main content United States keyboard_arrow_down search Contact us menu Properties Services Technology People Insights Industries About JLL Client stories Careers News Investor relations search Search menu Menu Home chevron_right Services Portfolio management From strategy to execution and ongoing management, we empower clients with comprehensive real estate portfolio services. Our approach enhances flexibility, boosts agility, elevates people and digital experiences, and reduces operating costs-driving efficiency and sustainable cities, portfolios, and offices. Let's talk arrow_forward Meeting your needs 3 Integrated services delivering end-to-end portfolio management, from goal se...",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "JLL (company)",
+            "url": "https://en.wikipedia.org/wiki/JLL_(company)",
+            "snippet": "Jones Lang LaSalle Incorporated (JLL) is an American real estate services company headquartered in Chicago. The company has offices in 80 countries."
+          },
+          {
+            "source": "Serper",
+            "title": "Real estate portfolio management - Strategic planning",
+            "url": "https://www.jll.com/en-us/services/portfolio-management",
+            "snippet": "Our end-to-end real estate transaction management provides the insights, analysis and expertise to support every step of your portfolio's life cycle."
+          },
+          {
+            "source": "Serper",
+            "title": "Property management services",
+            "url": "https://www.jll.com/en-us/services/property-management",
+            "snippet": "Our property management technology is built to address today's toughest operational challenges, with AI-powered tools and insights that drive efficiency, ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Commercial real estate trends and insights",
+            "url": "https://www.jll.com/en-us/insights",
+            "snippet": "JLL's regular view on global real estate dynamics, covering: investment, office, logistics, retail, hotels and living, as well as CRE market trends."
+          },
+          {
+            "source": "Serper",
+            "title": "JLL careers - Myworkdayjobs.com",
+            "url": "https://jll.wd1.myworkdayjobs.com/jllcareers",
+            "snippet": "For over 200 years, JLL (NYSE: JLL), a leading global commercial real estate and investment management company, has helped clients buy, build ..."
+          }
+        ],
+        "property_search_snippets": [
+          {
+            "source": "Serper Property",
+            "title": "One World Trade Center - Availabilities",
+            "url": "https://www.onewtc.com/availabilities/",
+            "snippet": "One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office."
+          },
+          {
+            "source": "Serper Property",
+            "title": "One World Trade Center - Availabilities",
+            "url": "https://www.onewtc.com/availabilities/",
+            "snippet": "With collaborative layouts, column-free floors, flexible lease terms and breathtaking views, these immediate-occupancy spaces readily tailor themselves to your ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "One World Trade Center",
+            "url": "https://www.explorewtc.com/content/wtc/en/local/learn-about-wtc/one-world-trade-center.html",
+            "snippet": "The 3.1 million-square-foot LEED Gold Certified skyscraper features premier office space, a tenant exclusive amenity floor, and some of the most spectacular ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "One World Trade Center",
+            "url": "https://www.som.com/projects/one-world-trade-center/",
+            "snippet": "More than 13 years in the making, the 104-story, 3.5-million-square-foot, 1,776-foot tower - the tallest in the Western Hemisphere - recaptured the New York ..."
+          },
+          {
+            "source": "Serper Property",
+            "title": "One World Trade Center",
+            "url": "https://en.wikipedia.org/wiki/One_World_Trade_Center",
+            "snippet": "The building has 94 stories, with the top floor numbered 104. The new World Trade Center complex will eventually include five high-rise office buildings"
+          }
+        ],
+        "property_search_matches_address": true,
+        "osm_property_class": null,
+        "osm_property_type": "commercial",
+        "osm_display_name": "One World Trade Center, 285, Fulton Street, Battery Park City, Lower Manhattan, Manhattan, New York County, New York, 10048, United States",
+        "business_type_signals": [
+          "property management",
+          "real estate"
+        ],
+        "leasing_volume_signals": [
+          "portfolio",
+          "properties"
+        ],
+        "operational_complexity_signals": [],
+        "product_fit_signals": [],
+        "property_signals": [],
+        "negative_property_signals": [
+          "office"
+        ],
+        "geographic_footprint_signals": [
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Property management services Our property management technology is built to address today's toughest operational challenges, with AI-powered tools and insights that drive efficiency, ... https://www.jll.com/en-us/services/property-management",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "No explicit unit, property, home, or leasing-volume count provided",
+            "interpreted_bucket": "Unknown",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "JLL (company) Jones Lang LaSalle Incorporated (JLL) is an American real estate services company headquartered in Chicago. The company has offices in 80 countries. https://en.wikipedia.org/wiki/JLL_(company)",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "Offices in 80 countries",
+            "interpreted_bucket": "High",
+            "confidence": "Medium",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Commercial real estate trends and insights JLL's regular view on global real estate dynamics, covering: investment, office, logistics, retail, hotels and living, as well as CRE market trends. https://www.jll.com/en-us/insights",
+            "evidence_source": "search_snippets[3]",
+            "parsed_value": "Real estate coverage includes investment, office, logistics, retail, hotels, and living",
+            "interpreted_bucket": "Unknown",
+            "confidence": "Medium",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {
+          "property_type": {
+            "raw_evidence": "One World Trade Center - Availabilities One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office. https://www.onewtc.com/availabilities/",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "Office",
+            "interpreted_bucket": "Commercial",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "property_scale": {
+            "raw_evidence": "One World Trade Center The 3.1 million-square-foot LEED Gold Certified skyscraper features premier office space, a tenant exclusive amenity floor, and some of the most spectacular ... https://www.explorewtc.com/content/wtc/en/local/learn-about-wtc/one-world-trade-center.html",
+            "evidence_source": "search_snippets[2]",
+            "parsed_value": "3.1 million-square-foot skyscraper",
+            "interpreted_bucket": "Large",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          },
+          "leasing_activity": {
+            "raw_evidence": "One World Trade Center - Availabilities One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office. https://www.onewtc.com/availabilities/",
+            "evidence_source": "search_snippets[0]",
+            "parsed_value": "Immediate availability; office space",
+            "interpreted_bucket": "Active",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        }
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 5; Census Tract 13; New York County; New York ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 001300, block group 5; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Address Resolution",
+          "title": "Medium confidence address match",
+          "url": null,
+          "snippet": "We could not find a direct Census match for the submitted address, so we used coordinate-based resolution. The fallback returned a location that appears to match the submitted address or property area, and Census mapped that coordinate to a tract/block group. The Market Fit score is based on that resolved geography."
+        },
+        {
+          "source": "Census ACS",
+          "title": "New York city, New York population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 8,516,202 in the 2023 ACS 5-year estimate (+0.9% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "Real estate portfolio management - Strategic planning | JLL JLL Logo JLL Logo JLL Logo JLL Logo",
+          "url": "https://www.jll.com/en-us/services/portfolio-management",
+          "snippet": "Skip to main content United States keyboard_arrow_down search Contact us menu Properties Services Technology People Insights Industries About JLL Client stories Careers News Investor relations search Search menu Menu Home chevron_right Services Portfolio management From strategy to execution and ongoing management, we empower clients with comprehensive real estate portfolio services. Our approach enhances flexibility, boosts agility, elevates people and digital experiences, and reduces operating costs-driving efficiency and sustainable cities, portfolios, and offices. Let's talk arrow_forward Meeting your needs 3 Integrated services delivering end-to-end portfolio management, from goal se..."
+        },
+        {
+          "source": "Serper",
+          "title": "JLL (company)",
+          "url": "https://en.wikipedia.org/wiki/JLL_(company)",
+          "snippet": "Jones Lang LaSalle Incorporated (JLL) is an American real estate services company headquartered in Chicago. The company has offices in 80 countries."
+        },
+        {
+          "source": "Serper",
+          "title": "Real estate portfolio management - Strategic planning",
+          "url": "https://www.jll.com/en-us/services/portfolio-management",
+          "snippet": "Our end-to-end real estate transaction management provides the insights, analysis and expertise to support every step of your portfolio's life cycle."
+        },
+        {
+          "source": "Serper",
+          "title": "Property management services",
+          "url": "https://www.jll.com/en-us/services/property-management",
+          "snippet": "Our property management technology is built to address today's toughest operational challenges, with AI-powered tools and insights that drive efficiency, ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Commercial real estate trends and insights",
+          "url": "https://www.jll.com/en-us/insights",
+          "snippet": "JLL's regular view on global real estate dynamics, covering: investment, office, logistics, retail, hotels and living, as well as CRE market trends."
+        },
+        {
+          "source": "Serper",
+          "title": "JLL careers - Myworkdayjobs.com",
+          "url": "https://jll.wd1.myworkdayjobs.com/jllcareers",
+          "snippet": "For over 200 years, JLL (NYSE: JLL), a leading global commercial real estate and investment management company, has helped clients buy, build ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "One World Trade Center - Availabilities",
+          "url": "https://www.onewtc.com/availabilities/",
+          "snippet": "One World Trade Center \u00b7 Penthouse II \u00b7 12,908 - 45,951. SQFT \u00b7 Immediate \u00b7 Office."
+        },
+        {
+          "source": "Serper Property",
+          "title": "One World Trade Center - Availabilities",
+          "url": "https://www.onewtc.com/availabilities/",
+          "snippet": "With collaborative layouts, column-free floors, flexible lease terms and breathtaking views, these immediate-occupancy spaces readily tailor themselves to your ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "One World Trade Center",
+          "url": "https://www.explorewtc.com/content/wtc/en/local/learn-about-wtc/one-world-trade-center.html",
+          "snippet": "The 3.1 million-square-foot LEED Gold Certified skyscraper features premier office space, a tenant exclusive amenity floor, and some of the most spectacular ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "One World Trade Center",
+          "url": "https://www.som.com/projects/one-world-trade-center/",
+          "snippet": "More than 13 years in the making, the 104-story, 3.5-million-square-foot, 1,776-foot tower - the tallest in the Western Hemisphere - recaptured the New York ..."
+        },
+        {
+          "source": "Serper Property",
+          "title": "One World Trade Center",
+          "url": "https://en.wikipedia.org/wiki/One_World_Trade_Center",
+          "snippet": "The building has 94 stories, with the top floor numbered 104. The new World Trade Center complex will eventually include five high-rise office buildings"
+        }
+      ],
+      "missing_data": [
+        "Median income was unavailable from ACS."
+      ],
+      "why_this_lead": [
+        "Large population base supports market scale.",
+        "Moderate city median rent supports rental market value.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "One World Trade Center is a large, actively leased commercial asset where even small delays in tours, inquiries, follow-ups, or document handoffs can create meaningful onsite workload.",
+        "JLL\u2019s portfolio-management model creates coordination across leasing, property operations, and client reporting\u2014making standardized intake and workflow visibility valuable.",
+        "A workflow that centralizes prospect activity and automates routine follow-up can help teams spend less time on status checks and manual handoffs while protecting response speed.",
+        "The strongest ROI angle is operational: reduce administrative effort per inquiry and give leasing teams a clearer view of pipeline activity across a high-profile, high-traffic property."
+      ],
+      "outreach_email": "Subject: Reducing leasing admin at One WTC\n\nHi Casey,\n\nWith an actively leased, large-scale asset like One World Trade Center, keeping up with inquiries, tours, follow-ups, and internal handoffs can put a lot of routine work on the onsite team.\n\nWe help property teams centralize that activity and automate the repetitive steps, so leasing has a clearer pipeline view without chasing updates across tools and inboxes.\n\nWould it be worth a brief conversation to see whether there\u2019s an opportunity to reduce the admin load around leasing activity at One WTC?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    },
+    {
+      "lead": {
+        "name": "James Wilson",
+        "email": "j.wilson@momandpoprentals.com",
+        "company": "Mom & Pop Rentals",
+        "address": "123 Maple Ave",
+        "city": "Des Moines",
+        "state": "IA",
+        "country": "US"
+      },
+      "score": {
+        "market_fit": {
+          "score": 18,
+          "max_score": 45,
+          "reasons": [
+            "Smaller population base provides limited market scale.",
+            "Lower city median rent weakens the rental value signal.",
+            "Strong population growth suggests continued rental demand.",
+            "Lower renter share weakens the neighborhood rental-demand signal.",
+            "Neighborhood ratios blend block-group and tract ACS data to reduce small-area noise.",
+            "Neighborhood median income indicates a moderate economic base.",
+            "Moderate vacancy is treated as a healthy neutral leasing-pressure signal.",
+            "Low no-vehicle household share weakens the urban-access signal."
+          ]
+        },
+        "company_fit": {
+          "score": 13,
+          "max_score": 39,
+          "reasons": [
+            "Leasing volume is calibrated deterministically from extracted scale evidence.",
+            "Operational complexity classified as Low from source-backed evidence.",
+            "Product fit classified as Moderate from source-backed evidence."
+          ]
+        },
+        "property_fit": {
+          "score": 9,
+          "max_score": 16,
+          "reasons": [
+            "Property type classified as Residential; contributes 4 points.",
+            "Property scale classified as Unknown; contributes 3 points.",
+            "Leasing activity classified as Unknown; contributes 2 points."
+          ]
+        },
+        "market_fit_breakdown": {
+          "score_breakdown": {
+            "city_momentum": {
+              "label": "City momentum",
+              "score": 5,
+              "max_score": 12,
+              "detail": "population 69,893 \u00b7 median rent $1,194 \u00b7 +8.5% growth"
+            },
+            "rental_demand": {
+              "label": "Rental demand",
+              "score": 2,
+              "max_score": 10,
+              "detail": "renter share 27% \u00b7 block-group blended with tract"
+            },
+            "economics": {
+              "label": "Neighborhood economics",
+              "score": 5,
+              "max_score": 8,
+              "detail": "median income $78,712"
+            },
+            "leasing_pressure": {
+              "label": "Leasing pressure",
+              "score": 5,
+              "max_score": 6,
+              "detail": "vacancy 8%"
+            },
+            "access": {
+              "label": "Access and density",
+              "score": 1,
+              "max_score": 9,
+              "detail": "no vehicle 4% \u00b7 transit 0% \u00b7 walk 1%"
+            }
+          },
+          "dampener_penalty": 0
+        },
+        "company_fit_breakdown": {
+          "score_breakdown": {
+            "leasing_volume": 4,
+            "operational_complexity": 4,
+            "product_fit": 5
+          },
+          "extraction_audit": {
+            "leasing_volume": {
+              "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+              "evidence_source": "website_snippet",
+              "parsed_value": "Rental homes available; no unit count stated",
+              "interpreted_bucket": "Low",
+              "confidence": "Medium",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 13
+            },
+            "operational_complexity": {
+              "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+              "evidence_source": "website_snippet",
+              "parsed_value": "Serves two communities with individual dedicated hosts; no portfolio or workflow count stated",
+              "interpreted_bucket": "Low",
+              "confidence": "Low",
+              "classifier": "openai_classifier",
+              "score_contribution": 4,
+              "max_contribution": 13
+            },
+            "product_fit": {
+              "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+              "evidence_source": "website_snippet",
+              "parsed_value": "Residential rental-home operator serving Edwardsville and Glen Carbon",
+              "interpreted_bucket": "Moderate",
+              "confidence": "High",
+              "classifier": "openai_classifier",
+              "score_contribution": 5,
+              "max_contribution": 13
+            }
+          }
+        },
+        "property_fit_breakdown": {
+          "score_breakdown": {
+            "property_type": 4,
+            "property_scale": 3,
+            "leasing_activity": 2
+          },
+          "extraction_audit": {
+            "property_type": {
+              "raw_evidence": "OSM Nominatim returned house for 123, North Maple Avenue, Woodward, Des Moines Township, Dallas County, Iowa, 50276, United States.",
+              "evidence_source": "osm_nominatim",
+              "parsed_value": "house",
+              "interpreted_bucket": "Residential",
+              "confidence": "High",
+              "classifier": "rule_fallback",
+              "score_contribution": 4,
+              "max_contribution": 6
+            },
+            "property_scale": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No property-scale evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 3,
+              "max_contribution": 6
+            },
+            "leasing_activity": {
+              "raw_evidence": "No matched evidence; neutral fallback applied.",
+              "evidence_source": null,
+              "parsed_value": "No leasing-activity evidence found",
+              "interpreted_bucket": "Unknown",
+              "confidence": null,
+              "classifier": "rule_fallback",
+              "score_contribution": 2,
+              "max_contribution": 4
+            }
+          }
+        },
+        "final_score": 40,
+        "priority": "Low",
+        "company_fit_label": "Unclear fit",
+        "confidence": "Medium"
+      },
+      "address_resolution": {
+        "confidence": "High",
+        "method": "census_exact",
+        "input_address": "123 Maple Ave, Des Moines, IA",
+        "matched_address": "123 MAPLE ST, W DES MOINES, IA, 50265",
+        "latitude": 41.571106129996,
+        "longitude": -93.703633945925,
+        "explanation": null
+      },
+      "market_metrics": {
+        "geography_name": "Block Group 2; Census Tract 110.01; Polk County; Iowa",
+        "state_fips": "19",
+        "county_fips": "153",
+        "tract": "011001",
+        "block_group": "2",
+        "population": 69893,
+        "population_growth_rate": 0.08529503105590062,
+        "median_gross_rent": 1194,
+        "median_income": 78712,
+        "renter_share": 0.2658288984471823,
+        "housing_units": 701,
+        "vacancy_rate": 0.07779838067911055,
+        "no_vehicle_household_share": 0.040697674418604654,
+        "public_transit_commute_share": 0.003568242640499554,
+        "walking_commute_share": 0.012934879571810883,
+        "multifamily_share": null,
+        "neighborhood_ratios_blended_with_tract": true
+      },
+      "company_enrichment": {
+        "domain": "momandpoprentals.net",
+        "website_url": "https://momandpoprentals.net/",
+        "website_title": "Mom and Pop Rentals",
+        "website_description": "Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today.",
+        "website_snippet": "With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+        "search_snippets": [
+          {
+            "source": "Serper",
+            "title": "Mom-and-pop landlords dominate single-family rentals",
+            "url": "https://www.linkedin.com/posts/lance-lambert-0bb5b677_mom-and-pop-landlords-are-by-far-the-largest-activity-7415794288011464704-B3pq",
+            "snippet": "Mom-and-pop landlords are by far the largest owners of single-family rentals, owners with 1,000+ homes account for 3.4% of U.S. single-family ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Why are mom and pop rentals not counted towards affordable housing?",
+            "url": "https://www.facebook.com/groups/258577490987879/posts/3318229451689319/",
+            "snippet": "I can't be the only one this bothers. I personally know several mom and pop landlords that rent to tenants for far below what our state deems as \" affordable ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Mom and Pop Rentals",
+            "url": "https://momandpoprentals.net/",
+            "snippet": "Let's find your perfect home together. Mom and Pop Rentals. 201 Mckinley Ave, Edwardsville, Illinois 62025, United States. (618) 606-6588. Copyright \u00a9 ..."
+          },
+          {
+            "source": "Serper",
+            "title": "Exploring Mom-and-Pop Landlord Rentals",
+            "url": "https://www.urban.org/projects/exploring-mom-and-pop-landlord-rentals",
+            "snippet": "The Urban Institute has partnered with Avail, an online platform that supports mom-and-pop landlords to manage their rental properties."
+          },
+          {
+            "source": "Serper",
+            "title": "Examining the Myth of the \u201cMom-and-Pop\u201d Landlord | by Sam Rabiyah",
+            "url": "https://medium.com/justfixorg/examining-the-myth-of-the-mom-and-pop-landlord-6f9f252a09c",
+            "snippet": "\"While 'mom-and-pop' landlords do exist, they do not represent the typical owners of registered properties in NYC.\""
+          }
+        ],
+        "property_search_snippets": [],
+        "property_search_matches_address": false,
+        "osm_property_class": null,
+        "osm_property_type": "house",
+        "osm_display_name": "123, North Maple Avenue, Woodward, Des Moines Township, Dallas County, Iowa, 50276, United States",
+        "business_type_signals": [
+          "communities",
+          "rental homes"
+        ],
+        "leasing_volume_signals": [
+          "communities",
+          "homes",
+          "properties",
+          "1,000+ homes"
+        ],
+        "operational_complexity_signals": [
+          "tenants"
+        ],
+        "product_fit_signals": [],
+        "property_signals": [],
+        "negative_property_signals": [],
+        "geographic_footprint_signals": [
+          "states"
+        ],
+        "classifications": {
+          "leasing_volume": {
+            "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+            "evidence_source": "website_snippet",
+            "parsed_value": "Rental homes available; no unit count stated",
+            "interpreted_bucket": "Low",
+            "confidence": "Medium",
+            "classifier": "openai_classifier"
+          },
+          "operational_complexity": {
+            "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+            "evidence_source": "website_snippet",
+            "parsed_value": "Serves two communities with individual dedicated hosts; no portfolio or workflow count stated",
+            "interpreted_bucket": "Low",
+            "confidence": "Low",
+            "classifier": "openai_classifier"
+          },
+          "product_fit": {
+            "raw_evidence": "Mom and Pop Rentals Discover a wide selection of rental homes available for you to choose from. Let us help you find your dream home today. With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts.",
+            "evidence_source": "website_snippet",
+            "parsed_value": "Residential rental-home operator serving Edwardsville and Glen Carbon",
+            "interpreted_bucket": "Moderate",
+            "confidence": "High",
+            "classifier": "openai_classifier"
+          }
+        },
+        "property_classifications": {}
+      },
+      "evidence": [
+        {
+          "source": "Census Geocoder + ACS 5-Year",
+          "title": "Block Group 2; Census Tract 110.01; Polk County; Iowa ACS 2023 neighborhood profile",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Resolved address to tract 011001, block group 2; loaded local renter share, income, housing units, vacancy, and urban access proxy metrics."
+        },
+        {
+          "source": "Census ACS",
+          "title": "West Des Moines city, Iowa population trend",
+          "url": "https://api.census.gov/data/2023/acs/acs5",
+          "snippet": "Population was 69,893 in the 2023 ACS 5-year estimate (+8.5% since 2018)."
+        },
+        {
+          "source": "Company website",
+          "title": "Mom and Pop Rentals",
+          "url": "https://momandpoprentals.net/",
+          "snippet": "With 16 years of experience serving the Edwardsville and Glen Carbon communities, we're Paul and Amber Ottwein, your dedicated hosts."
+        },
+        {
+          "source": "Serper",
+          "title": "Mom-and-pop landlords dominate single-family rentals",
+          "url": "https://www.linkedin.com/posts/lance-lambert-0bb5b677_mom-and-pop-landlords-are-by-far-the-largest-activity-7415794288011464704-B3pq",
+          "snippet": "Mom-and-pop landlords are by far the largest owners of single-family rentals, owners with 1,000+ homes account for 3.4% of U.S. single-family ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Why are mom and pop rentals not counted towards affordable housing?",
+          "url": "https://www.facebook.com/groups/258577490987879/posts/3318229451689319/",
+          "snippet": "I can't be the only one this bothers. I personally know several mom and pop landlords that rent to tenants for far below what our state deems as \" affordable ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Mom and Pop Rentals",
+          "url": "https://momandpoprentals.net/",
+          "snippet": "Let's find your perfect home together. Mom and Pop Rentals. 201 Mckinley Ave, Edwardsville, Illinois 62025, United States. (618) 606-6588. Copyright \u00a9 ..."
+        },
+        {
+          "source": "Serper",
+          "title": "Exploring Mom-and-Pop Landlord Rentals",
+          "url": "https://www.urban.org/projects/exploring-mom-and-pop-landlord-rentals",
+          "snippet": "The Urban Institute has partnered with Avail, an online platform that supports mom-and-pop landlords to manage their rental properties."
+        },
+        {
+          "source": "Serper",
+          "title": "Examining the Myth of the \u201cMom-and-Pop\u201d Landlord | by Sam Rabiyah",
+          "url": "https://medium.com/justfixorg/examining-the-myth-of-the-mom-and-pop-landlord-6f9f252a09c",
+          "snippet": "\"While 'mom-and-pop' landlords do exist, they do not represent the typical owners of registered properties in NYC.\""
+        }
+      ],
+      "missing_data": [
+        "Property search returned snippets, but none matched the submitted or resolved property.",
+        "OpenAI property classification skipped because no property evidence was available."
+      ],
+      "why_this_lead": [
+        "Smaller population base provides limited market scale.",
+        "Lower city median rent weakens the rental value signal.",
+        "Leasing volume is calibrated deterministically from extracted scale evidence."
+      ],
+      "sales_insights": [
+        "The address resolves to a residential house, so leasing workflows are likely tied to individual home turns rather than a centralized multifamily office.",
+        "For a small residential portfolio, the highest-value automation is usually removing repeat work from inquiry follow-up, showing coordination, and application handoffs so onsite time stays focused on maintenance and resident needs.",
+        "If new leases or renewals pick up, a consistent response and follow-up process can help prevent prospects from slipping through the cracks without adding administrative workload.",
+        "A lightweight leasing workflow can create ROI even at modest scale by shortening vacancy time and reducing the manual back-and-forth required for each available home."
+      ],
+      "outreach_email": "Subject: Simplifying leasing follow-up for your rentals\n\nHi James \u2014\n\nFor residential rentals, the leasing work around each opening can add up fast: responding to inquiries, coordinating showings, following up, and moving applicants through the next step.\n\nWe help rental operators automate that front-end workflow so prospects get timely responses and your team spends less time chasing messages or managing handoffs. It\u2019s designed to be lightweight for smaller portfolios\u2014not another complicated system to run.\n\nWould it be worth a quick conversation to see whether it could reduce the manual work around your next vacancy?\n\nBest,\n[Your Name]",
+      "follow_ups": [
+        "Day 0: Send initial personalized outreach.",
+        "Day 2: Follow up with a concise value prop tied to leasing responsiveness.",
+        "Day 5: Follow up with an operational pain point around resident communication."
+      ]
+    }
+  ]
+}

@@ -2,21 +2,20 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
-  Bug,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
-  Lightbulb,
   Loader2,
   Plus,
-  Sparkles,
   User,
 } from "lucide-react"
 
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { CsvUploadDialog } from "@/components/csv-upload-dialog"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -33,12 +32,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { analyzeLeadsWithOutreach } from "@/lib/api/client"
-import { getAnalysisId } from "@/lib/api/id"
+import { fetchStoredRuns } from "@/lib/api/client"
 import type { LeadAnalysis } from "@/lib/api/types"
-import { sampleLeads } from "@/lib/sample-leads"
-import { useLeadStore } from "@/lib/store"
+import { useQuota } from "@/lib/use-quota"
+import sampleAnalyses from "@/lib/sample-analyses.json"
+import {
+  fromStoredRuns,
+  toRunEntries,
+  useLeadStore,
+  type PendingRun,
+  type RunEntry,
+} from "@/lib/store"
 import { useHasHydrated } from "@/lib/use-hydrated"
+
+// Bundled at build time by backend/scripts/export_sample_analyses.py so the
+// dashboard renders instantly, before (or without) any backend round trip.
+const SAMPLE_RUNS: RunEntry[] = toRunEntries(
+  sampleAnalyses.leads as unknown as LeadAnalysis[],
+  "sample"
+)
 
 function getScoreColor(score: number) {
   if (score >= 80) return "bg-primary/10 text-foreground"
@@ -46,172 +58,373 @@ function getScoreColor(score: number) {
   return "bg-muted/50 text-muted-foreground/70"
 }
 
-export default function Home() {
-  const analyses = useLeadStore((state) => state.analyses)
-  const status = useLeadStore((state) => state.status)
-  const error = useLeadStore((state) => state.error)
-  const setAnalyses = useLeadStore((state) => state.setAnalyses)
-  const setStatus = useLeadStore((state) => state.setStatus)
+export default function LeadsPage() {
+  const runs = useLeadStore((state) => state.runs)
+  const pending = useLeadStore((state) => state.pending)
+  const mergeRuns = useLeadStore((state) => state.mergeRuns)
+  const setRuns = useLeadStore((state) => state.setRuns)
+  const addPending = useLeadStore((state) => state.addPending)
 
   const hydrated = useHasHydrated()
+  const quota = useQuota()
   const [addOpen, setAddOpen] = React.useState(false)
   const [csvOpen, setCsvOpen] = React.useState(false)
 
-  async function loadSampleData() {
-    setStatus("loading")
-    try {
-      const results = await analyzeLeadsWithOutreach(sampleLeads)
-      setAnalyses(results, { personalized: true })
-    } catch (err) {
-      setStatus(
-        "error",
-        err instanceof Error ? err.message : "Failed to load sample data."
-      )
-    }
-  }
+  // Dev-only: /leads?preview=pending renders stuck pending rows so the loading
+  // state can be styled without spending live runs. Cleared by a plain reload.
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || !hydrated) return
+    if (!window.location.search.includes("preview=pending")) return
+    addPending([
+      {
+        name: "Priya Raman",
+        email: "p.raman@camdenliving.com",
+        company: "Camden Property Trust",
+        address: "Camden Music Row, 1310 Adams St",
+        city: "Nashville",
+        state: "TN",
+        country: "US",
+      },
+      {
+        name: "Marcus Webb",
+        email: "m.webb@maac.com",
+        company: "MAA",
+        address: "MAA Park Estate, 960 Catbird Ct",
+        city: "Memphis",
+        state: "TN",
+        country: "US",
+      },
+    ])
+  }, [hydrated, addPending])
 
-  const isLoading = status === "loading"
-  const showEmpty = hydrated && analyses.length === 0 && !isLoading
+  // Seed with the bundled samples for instant paint, then replace with the
+  // server's list: it holds the same seeded samples plus community runs, and
+  // acts as the source of truth so server-side deletions propagate here.
+  React.useEffect(() => {
+    if (!hydrated) return
+    mergeRuns(SAMPLE_RUNS, { personalized: true })
+
+    let cancelled = false
+    fetchStoredRuns()
+      .then((body) => {
+        if (cancelled) return
+        // Dedupe by id, server version winning over the bundled copy.
+        const byId = new Map(
+          [...SAMPLE_RUNS, ...fromStoredRuns(body.runs)].map((entry) => [
+            entry.id,
+            entry,
+          ])
+        )
+        setRuns([...byId.values()], { personalized: true })
+      })
+      .catch(() => {
+        // Backend asleep or unreachable: the bundled samples still render.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated, mergeRuns, setRuns])
+
+  const outOfRuns = quota.loaded && quota.enabled && quota.runs_remaining <= 0
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-16 items-center justify-between border-b px-6">
-        <h1 className="text-lg font-semibold tracking-tight">
-          Inbound SDR Copilot
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Lightbulb className="size-4" />
-            Feature Request
-          </Button>
-          <Button variant="outline" size="sm">
-            <Bug className="size-4" />
-            Report Bug
-          </Button>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-8 py-10">
         <div className="flex flex-col gap-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold tracking-tight">Leads</h2>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button>
-                  <Plus className="size-4" />
-                  Add Lead
-                  <ChevronDown className="size-3 opacity-60" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setAddOpen(true)}>
-                  <User className="size-4" />
-                  Single Lead
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setCsvOpen(true)}>
-                  <FileSpreadsheet className="size-4" />
-                  CSV Upload
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-semibold tracking-tight">Leads</h2>
+              <p className="text-sm text-muted-foreground">
+                Curated sample analyses plus live runs from other visitors,
+                ranked by lead score.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2.5">
+              <div className="flex items-center gap-3">
+                <QuotaMeter
+                  remaining={quota.runs_remaining}
+                  limit={quota.runs_limit}
+                  ready={quota.loaded && quota.enabled}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button disabled={outOfRuns}>
+                      <Plus className="size-4" />
+                      Add Lead
+                      <ChevronDown className="size-3 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setAddOpen(true)}>
+                      <User className="size-4" />
+                      Single Lead
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setCsvOpen(true)}>
+                      <FileSpreadsheet className="size-4" />
+                      CSV Upload
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {outOfRuns && (
+                <p className="max-w-xs text-right text-xs text-muted-foreground">
+                  <a
+                    href="mailto:yashvisal@gmail.com?subject=Inbound%20SDR%20Copilot%20demo"
+                    className="underline underline-offset-2"
+                  >
+                    Email me
+                  </a>{" "}
+                  for a live demo.
+                </p>
+              )}
+            </div>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Could not run analysis</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {!hydrated && <QueueSkeleton label="Loading dashboard..." />}
 
-          {isLoading && <QueueSkeleton />}
-
-          {showEmpty && (
-            <EmptyState onLoadSample={loadSampleData} />
-          )}
-
-          {hydrated && analyses.length > 0 && !isLoading && (
-            <LeadTable analyses={analyses} />
+          {hydrated && (runs.length > 0 || pending.length > 0) && (
+            <LeadTable runs={runs} pending={pending} />
           )}
         </div>
       </main>
 
-      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} />
-      <CsvUploadDialog open={csvOpen} onOpenChange={setCsvOpen} />
+      <AddLeadDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onRunSettled={quota.refresh}
+      />
+      <CsvUploadDialog
+        open={csvOpen}
+        onOpenChange={setCsvOpen}
+        maxLeads={quota.perVisitorDailyLimit}
+        onRunSettled={quota.refresh}
+      />
     </div>
   )
 }
 
-function LeadTable({ analyses }: { analyses: LeadAnalysis[] }) {
+/**
+ * Remaining live runs, shown next to the Add Lead button at matching height.
+ * Hidden until the quota is known (cached values appear immediately); no
+ * entrance animation.
+ */
+function QuotaMeter({
+  remaining,
+  limit,
+  ready,
+}: {
+  remaining: number
+  limit: number
+  ready: boolean
+}) {
+  const percentRemaining =
+    limit > 0 ? Math.max(0, Math.min(100, (remaining / limit) * 100)) : 0
+
+  if (!ready) return null
+
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead className="text-right">Lead Score</TableHead>
-            <TableHead className="w-8" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {analyses.map((analysis) => {
-            const id = getAnalysisId(analysis)
-            const { lead, score } = analysis
-            return (
-              <TableRow key={id} className="group cursor-pointer">
-                <TableCell className="font-medium">
-                  <Link href={`/leads/${id}`} className="hover:underline">
-                    {lead.name}
-                  </Link>
+    <div
+      className="hidden h-8 items-center gap-2.5 rounded-lg border bg-card/40 px-3 sm:flex"
+      title={`${remaining} of ${limit} free monthly runs remaining`}
+    >
+      <div
+        className="h-1.5 w-14 overflow-hidden rounded-full bg-foreground/12"
+        aria-hidden
+      >
+        <div
+          className="h-full rounded-full bg-foreground/85"
+          style={{ width: `${percentRemaining}%` }}
+        />
+      </div>
+      <span className="text-xs whitespace-nowrap text-muted-foreground">
+        <span className="font-medium tabular-nums text-foreground">
+          {remaining}
+        </span>
+        <span className="tabular-nums">/{limit}</span> free monthly runs left
+      </span>
+    </div>
+  )
+}
+
+const PAGE_SIZE = 10
+
+function LeadTable({
+  runs,
+  pending,
+}: {
+  runs: RunEntry[]
+  pending: PendingRun[]
+}) {
+  const router = useRouter()
+  const [page, setPage] = React.useState(0)
+
+  // Pending rows only ever sit on the first page, above the ranked results.
+  const pageCount = Math.max(1, Math.ceil(runs.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount - 1)
+  const start = currentPage * PAGE_SIZE
+  const visible = runs.slice(start, start + PAGE_SIZE)
+  const visiblePending = currentPage === 0 ? pending : []
+
+  return (
+    <div className="space-y-3">
+      {/* Height follows the rows on this page — no fixed frame, no scrolling.
+          The first and last columns carry extra edge padding so content
+          doesn't hug the table border. */}
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-16 pl-5 text-center">Rank</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead className="text-right">Lead Score</TableHead>
+              <TableHead className="w-10 pr-4" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {/* In-flight leads sit at the top until their score arrives. The
+                tinted band marks them as not-yet-real rows. */}
+            {visiblePending.map(({ id, lead }) => (
+              <TableRow
+                key={`pending-${id}`}
+                className="border-l-2 border-l-foreground/40 bg-muted/40 hover:bg-muted/40"
+              >
+                <TableCell className="pl-5 text-center text-muted-foreground/50">
+                  —
+                </TableCell>
+                <TableCell className="font-medium text-muted-foreground">
+                  {lead.name}
+                  <div className="text-xs text-muted-foreground/60">
+                    {lead.email}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {lead.email}
+                  {lead.company}
                 </TableCell>
-                <TableCell>{lead.company}</TableCell>
-                <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                <TableCell className="max-w-[260px] truncate text-muted-foreground">
                   {lead.address}, {lead.city}, {lead.state}
                 </TableCell>
                 <TableCell className="text-right">
-                  <span
-                    className={`inline-flex items-center justify-center rounded-md px-2.5 py-1 text-sm font-medium tabular-nums ${getScoreColor(
-                      score.final_score
-                    )}`}
-                  >
-                    {score.final_score}
+                  {/* Same box as the score chip so the spinner lands on the
+                      numbers' centre line rather than the cell's right edge. */}
+                  <span className="inline-flex items-center justify-center rounded-md bg-muted px-2.5 py-1">
+                    <Loader2
+                      className="size-4 animate-spin text-foreground/70"
+                      aria-label={`Analyzing ${lead.name}`}
+                    />
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/leads/${id}`}
-                    aria-label={`View ${lead.name}`}
-                  >
-                    <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                  </Link>
-                </TableCell>
+                <TableCell className="pr-4" />
               </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+            ))}
+            {visible.map((entry, index) => {
+              const { lead, score } = entry.analysis
+              const href = `/leads/${entry.id}`
+              const rank = start + index + 1
+              return (
+                // The whole row is the click target; the name stays a real link
+                // so keyboard users and "open in new tab" still work.
+                <TableRow
+                  key={entry.id}
+                  className="group cursor-pointer"
+                  onClick={() => router.push(href)}
+                >
+                  <TableCell className="pl-5 text-center font-semibold tabular-nums text-foreground">
+                    {rank}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={href}
+                      className="hover:underline"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {lead.name}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">
+                      {lead.email}
+                    </div>
+                  </TableCell>
+                  <TableCell>{lead.company}</TableCell>
+                  <TableCell className="max-w-[260px] truncate text-muted-foreground">
+                    {lead.address}, {lead.city}, {lead.state}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span
+                      className={`inline-flex items-center justify-center rounded-md px-2.5 py-1 text-sm font-medium tabular-nums ${getScoreColor(
+                        score.final_score
+                      )}`}
+                    >
+                      {score.final_score}
+                    </span>
+                  </TableCell>
+                  <TableCell className="pr-4">
+                    <ChevronRight
+                      className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-hidden
+                    />
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-muted-foreground">
+            Showing{" "}
+            <span className="tabular-nums text-foreground">
+              {start + 1}–{start + visible.length}
+            </span>{" "}
+            of <span className="tabular-nums">{runs.length}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className="size-4" />
+              Previous
+            </Button>
+            <span className="px-1 text-xs tabular-nums text-muted-foreground">
+              {currentPage + 1} / {pageCount}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage >= pageCount - 1}
+            >
+              Next
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function QueueSkeleton() {
+function QueueSkeleton({
+  label = "Analyzing leads and generating outreach...",
+}: {
+  label?: string
+}) {
   return (
     <div className="rounded-lg border">
       <div className="flex items-center gap-3 border-b px-4 py-3 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        Analyzing leads and generating outreach...
+        {label}
       </div>
       <div className="grid gap-3 p-4">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between gap-4"
-          >
+          <div key={index} className="flex items-center justify-between gap-4">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-4 w-56" />
             <Skeleton className="h-4 w-32" />
@@ -220,26 +433,6 @@ function QueueSkeleton() {
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-function EmptyState({ onLoadSample }: { onLoadSample: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-16 text-center">
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-        <Sparkles className="size-5 text-muted-foreground" />
-      </div>
-      <div className="space-y-1">
-        <p className="font-medium">No leads yet</p>
-        <p className="text-sm text-muted-foreground">
-          Load a curated sample queue or add your own leads to start scoring.
-        </p>
-      </div>
-      <Button onClick={onLoadSample}>
-        <Sparkles className="size-4" />
-        Load Sample Data
-      </Button>
     </div>
   )
 }
