@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -8,8 +9,15 @@ from app.config import get_settings
 from app.models import MarketMetrics
 from app.services.geo import STATE_NAME_BY_FIPS, normalize_place_name, state_fips
 
+logger = logging.getLogger(__name__)
+
 ACS_YEAR = "2023"
 ACS_BASE_URL = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
+
+# Population growth compares the current 5-year estimate against one from five
+# years earlier so the two sample windows do not overlap.
+ACS_GROWTH_BASE_YEAR = "2018"
+ACS_GROWTH_BASE_URL = f"https://api.census.gov/data/{ACS_GROWTH_BASE_YEAR}/acs/acs5"
 
 ACS_CORE_MARKET_VARIABLES = [
     "NAME",
@@ -35,8 +43,10 @@ ACS_MARKET_VARIABLES = [
 ]
 ACS_PLACE_MARKET_VARIABLES = [
     "NAME",
+    "B01003_001E",  # Total population
     "B25064_001E",  # Median gross rent
 ]
+ACS_POPULATION_VARIABLE = "B01003_001E"
 ACS_PLACE_LOOKUP_VARIABLES = ["NAME"]
 
 
@@ -223,6 +233,7 @@ async def fetch_place_market(city: str, state: str) -> CensusPlaceMarket | None:
 
 
 def _metrics_from_record(record: dict[str, Any]) -> MarketMetrics:
+    population = _to_int(record.get("B01003_001E"))
     median_income = _to_int(record.get("B19013_001E"))
     median_gross_rent = _to_int(record.get("B25064_001E"))
     housing_units = _to_int(record.get("B25001_001E"))
@@ -237,6 +248,7 @@ def _metrics_from_record(record: dict[str, Any]) -> MarketMetrics:
     walking_commuters = _to_int(record.get("B08301_019E"))
 
     return MarketMetrics(
+        population=population,
         median_income=median_income,
         median_gross_rent=median_gross_rent,
         housing_units=housing_units,
@@ -298,6 +310,84 @@ async def _fetch_place_acs_record(
     return dict(zip(rows[0], rows[1], strict=False))
 
 
+@dataclass(frozen=True)
+class PlacePopulationHistory:
+    latest_population: int | None
+    growth_rate: float | None
+    latest_year: int
+    earliest_year: int
+
+
+async def fetch_place_population_history(place_geoid: str) -> PlacePopulationHistory | None:
+    """Population and multi-year growth for a place, from ACS 5-year estimates.
+
+    Replaces the Data USA population cube, which now returns zero rows for every
+    query while still serving dimension metadata.
+    """
+
+    # A place GEOID is exactly 2 state digits plus 5 place digits. Splitting a
+    # shorter value would silently query a different place.
+    if len(place_geoid) != 7:
+        logger.warning("Ignoring malformed place GEOID %r", place_geoid)
+        return None
+    state_fips, place_fips = place_geoid[:2], place_geoid[2:]
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        latest, base = await asyncio.gather(
+            _fetch_place_population(client, state_fips, place_fips, ACS_BASE_URL),
+            _fetch_place_population(client, state_fips, place_fips, ACS_GROWTH_BASE_URL),
+            return_exceptions=True,
+        )
+
+    # gather() swallows failures into the results; surface them so a broken
+    # vintage is diagnosable instead of just looking like missing data.
+    for label, result in (("latest", latest), ("baseline", base)):
+        if isinstance(result, BaseException):
+            logger.warning(
+                "ACS %s population lookup failed for place %s: %s",
+                label,
+                place_geoid,
+                result,
+            )
+
+    latest_population = latest if isinstance(latest, int) else None
+    base_population = base if isinstance(base, int) else None
+    if latest_population is None:
+        return None
+
+    growth_rate = None
+    if base_population:
+        growth_rate = (latest_population - base_population) / base_population
+
+    return PlacePopulationHistory(
+        latest_population=latest_population,
+        growth_rate=growth_rate,
+        latest_year=int(ACS_YEAR),
+        earliest_year=int(ACS_GROWTH_BASE_YEAR),
+    )
+
+
+async def _fetch_place_population(
+    client: httpx.AsyncClient,
+    state_fips: str,
+    place_fips: str,
+    base_url: str,
+) -> int | None:
+    settings = get_settings()
+    params: dict[str, str] = {
+        "get": f"NAME,{ACS_POPULATION_VARIABLE}",
+        "for": f"place:{place_fips}",
+        "in": f"state:{state_fips}",
+    }
+    if settings.census_api_key:
+        params["key"] = settings.census_api_key
+
+    rows = await _fetch_census_rows(client, params, base_url=base_url)
+    if len(rows) < 2:
+        return None
+    return _to_int(dict(zip(rows[0], rows[1], strict=False)).get(ACS_POPULATION_VARIABLE))
+
+
 async def _fetch_place_lookup_rows(
     client: httpx.AsyncClient,
     state_fips: str,
@@ -317,6 +407,8 @@ async def _fetch_place_lookup_rows(
 async def _fetch_census_rows(
     client: httpx.AsyncClient,
     params: dict[str, str],
+    *,
+    base_url: str = ACS_BASE_URL,
 ) -> list[list[Any]]:
     retryable_errors = (
         httpx.ConnectError,
@@ -327,7 +419,7 @@ async def _fetch_census_rows(
     for attempt in range(3):
         try:
             response = await client.get(
-                ACS_BASE_URL,
+                base_url,
                 params=params,
                 headers={"User-Agent": "inbound-sdr-copilot/0.1"},
             )

@@ -643,6 +643,7 @@ def _is_usable_property_evidence(
     *,
     property_aliases: list[str] | None = None,
 ) -> bool:
+    text = text.lower()
     if _is_nearby_property_noise(text) or _is_neighborhood_listing_page(text):
         return False
     if _contains_different_street_address(text, lead):

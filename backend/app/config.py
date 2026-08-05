@@ -19,9 +19,22 @@ class Settings(BaseSettings):
     serper_api_key: str | None = Field(default=None, alias="SERPER_API_KEY")
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
-    openai_outreach_model: str = Field(default="gpt-5.5", alias="OPENAI_OUTREACH_MODEL")
+    openai_model: str = Field(default="gpt-5.6-luna", alias="OPENAI_MODEL")
+    openai_outreach_model: str = Field(default="gpt-5.6-terra", alias="OPENAI_OUTREACH_MODEL")
     enrichment_max_concurrency: int = Field(default=1, alias="ENRICHMENT_MAX_CONCURRENCY")
+
+    # Shared community dashboard storage. When either value is blank the run
+    # store and quota checks become no-ops so local dev needs no external state.
+    upstash_redis_rest_url: str | None = Field(default=None, alias="UPSTASH_REDIS_REST_URL")
+    upstash_redis_rest_token: str | None = Field(default=None, alias="UPSTASH_REDIS_REST_TOKEN")
+
+    max_runs_per_month: int = Field(default=100, alias="MAX_RUNS_PER_MONTH")
+    max_runs_per_ip_per_day: int = Field(default=3, alias="MAX_RUNS_PER_IP_PER_DAY")
+    community_run_limit: int = Field(default=50, alias="COMMUNITY_RUN_LIMIT")
+
+    @property
+    def run_store_enabled(self) -> bool:
+        return bool(self.upstash_redis_rest_url and self.upstash_redis_rest_token)
 
 
 @lru_cache

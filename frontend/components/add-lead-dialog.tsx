@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2 } from "lucide-react"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,9 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+
 import { analyzeLeadsWithOutreach } from "@/lib/api/client"
-import type { LeadInput } from "@/lib/api/types"
-import { useLeadStore } from "@/lib/store"
+import { QuotaError, type LeadInput } from "@/lib/api/types"
+import { announceCompletedRuns } from "@/lib/run-toast"
+import { toRunEntries, useLeadStore } from "@/lib/store"
 
 const emptyLead: LeadInput = {
   name: "",
@@ -31,14 +32,17 @@ const emptyLead: LeadInput = {
 export function AddLeadDialog({
   open,
   onOpenChange,
+  onRunSettled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Fired when a run finishes or fails, so the caller can refresh quota. */
+  onRunSettled?: () => void
 }) {
   const [form, setForm] = React.useState<LeadInput>(emptyLead)
-  const [submitting, setSubmitting] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const addAnalyses = useLeadStore((state) => state.addAnalyses)
+  const mergeRuns = useLeadStore((state) => state.mergeRuns)
+  const addPending = useLeadStore((state) => state.addPending)
+  const removePending = useLeadStore((state) => state.removePending)
 
   function update<K extends keyof LeadInput>(key: K, value: LeadInput[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -46,8 +50,6 @@ export function AddLeadDialog({
 
   function reset() {
     setForm(emptyLead)
-    setError(null)
-    setSubmitting(false)
   }
 
   function handleOpenChange(next: boolean) {
@@ -55,19 +57,39 @@ export function AddLeadDialog({
     onOpenChange(next)
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    setSubmitting(true)
-    setError(null)
-    try {
-      const analyses = await analyzeLeadsWithOutreach([form])
-      addAnalyses(analyses, { personalized: true })
-      reset()
-      onOpenChange(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
-      setSubmitting(false)
-    }
+
+    // Close the dialog right away; the lead shows up in the table as a
+    // pending row while the analysis runs in the background.
+    const lead = form
+    const pendingIds = addPending([lead])
+    reset()
+    onOpenChange(false)
+
+    analyzeLeadsWithOutreach([lead])
+      .then((analyses) => {
+        const entries = toRunEntries(
+          analyses,
+          "community",
+          new Date().toISOString()
+        )
+        mergeRuns(entries, { personalized: true })
+        announceCompletedRuns(entries)
+      })
+      .catch((err) => {
+        toast.error(
+          err instanceof QuotaError ? "Live runs unavailable" : "Analysis failed",
+          {
+            description:
+              err instanceof Error ? err.message : "Something went wrong.",
+          }
+        )
+      })
+      .finally(() => {
+        removePending(pendingIds)
+        onRunSettled?.()
+      })
   }
 
   return (
@@ -77,6 +99,8 @@ export function AddLeadDialog({
           <DialogTitle>Add Lead</DialogTitle>
           <DialogDescription>
             Submit a single inbound lead and we&apos;ll enrich and score it.
+            This is a public demo — runs are visible to other visitors, so
+            please don&apos;t enter real contact details.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
@@ -132,24 +156,16 @@ export function AddLeadDialog({
             onChange={(value) => update("country", value)}
             placeholder="US"
           />
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Analysis failed</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting && <Loader2 className="size-4 animate-spin" />}
-              {submitting ? "Analyzing..." : "Run Analysis"}
+            <Button type="submit">
+              Run analysis
             </Button>
           </DialogFooter>
         </form>

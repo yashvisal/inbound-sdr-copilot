@@ -6,7 +6,9 @@ from app.models import (
     CompanyEnrichment,
     CompanyFitLabel,
     LeadInput,
+    MarketFitBreakdown,
     MarketMetrics,
+    MarketSubScore,
     ScoreBreakdown,
     ScoreSection,
     SignalAudit,
@@ -30,6 +32,12 @@ class _PropertyFitResult:
     breakdown: PropertyFitBreakdown
 
 
+@dataclass(frozen=True)
+class _MarketFitResult:
+    section: ScoreSection
+    breakdown: MarketFitBreakdown
+
+
 def score_lead(
     lead: LeadInput,
     market_metrics: MarketMetrics,
@@ -49,7 +57,8 @@ def score_lead(
             website_snippet=company_text,
         )
 
-    market_fit = _score_market_fit(market_metrics)
+    market_fit_result = _score_market_fit(market_metrics)
+    market_fit = market_fit_result.section
     company_fit_result = _score_company_fit(company_enrichment)
     property_fit_result = _score_property_fit(company_enrichment)
 
@@ -61,13 +70,14 @@ def score_lead(
     if company_fit_result.unrelated:
         final_score = min(final_score, 60)
 
-    priority = "High" if final_score >= 40 else "Medium" if final_score >= 30 else "Low"
+    priority = "High" if final_score >= 75 else "Medium" if final_score >= 50 else "Low"
     confidence = _confidence(market_metrics, company_enrichment)
 
     return ScoreBreakdown(
         market_fit=market_fit,
         company_fit=company_fit_result.section,
         property_fit=property_fit_result.section,
+        market_fit_breakdown=market_fit_result.breakdown,
         company_fit_breakdown=company_fit_result.breakdown,
         property_fit_breakdown=property_fit_result.breakdown,
         final_score=final_score,
@@ -77,7 +87,7 @@ def score_lead(
     )
 
 
-def _score_market_fit(metrics: MarketMetrics) -> ScoreSection:
+def _score_market_fit(metrics: MarketMetrics) -> _MarketFitResult:
     score = 0
     reasons: list[str] = []
 
@@ -99,7 +109,115 @@ def _score_market_fit(metrics: MarketMetrics) -> ScoreSection:
     score -= dampener
     reasons.extend(dampener_reasons)
 
-    return ScoreSection(score=max(0, min(score, 45)), max_score=45, reasons=reasons)
+    # The sub-scores are kept (rather than summed away) so the UI can show which
+    # component earned or lost points, annotated with the Census values behind it.
+    breakdown = MarketFitBreakdown(
+        score_breakdown={
+            "city_momentum": MarketSubScore(
+                label="City momentum",
+                score=city_score,
+                max_score=12,
+                detail=_city_momentum_detail(metrics),
+            ),
+            "rental_demand": MarketSubScore(
+                label="Rental demand",
+                score=rental_score,
+                max_score=10,
+                detail=_rental_demand_detail(metrics),
+            ),
+            "economics": MarketSubScore(
+                label="Neighborhood economics",
+                score=economic_score,
+                max_score=8,
+                detail=_economics_detail(metrics),
+            ),
+            "leasing_pressure": MarketSubScore(
+                label="Leasing pressure",
+                score=leasing_score,
+                max_score=6,
+                detail=_leasing_pressure_detail(metrics),
+            ),
+            "access": MarketSubScore(
+                label="Access and density",
+                score=access_score,
+                max_score=9,
+                detail=_access_detail(metrics),
+            ),
+        },
+        dampener_penalty=dampener,
+    )
+
+    return _MarketFitResult(
+        section=ScoreSection(
+            score=max(0, min(score, 45)),
+            max_score=45,
+            reasons=reasons,
+        ),
+        breakdown=breakdown,
+    )
+
+
+def _fmt_int(value: int | None) -> str | None:
+    return f"{value:,}" if value is not None else None
+
+
+def _fmt_percent(value: float | None) -> str | None:
+    return f"{value * 100:.0f}%" if value is not None else None
+
+
+def _joined_detail(parts: list[str | None]) -> str | None:
+    present = [part for part in parts if part]
+    return " · ".join(present) if present else None
+
+
+def _city_momentum_detail(metrics: MarketMetrics) -> str | None:
+    population = _fmt_int(metrics.population)
+    rent = _fmt_int(metrics.median_gross_rent)
+    growth = (
+        f"{metrics.population_growth_rate * 100:+.1f}% growth"
+        if metrics.population_growth_rate is not None
+        else None
+    )
+    return _joined_detail(
+        [
+            f"population {population}" if population else None,
+            f"median rent ${rent}" if rent else None,
+            growth,
+        ]
+    )
+
+
+def _rental_demand_detail(metrics: MarketMetrics) -> str | None:
+    share = _fmt_percent(metrics.renter_share)
+    blended = (
+        "block-group blended with tract"
+        if metrics.neighborhood_ratios_blended_with_tract
+        else None
+    )
+    return _joined_detail([f"renter share {share}" if share else None, blended])
+
+
+def _economics_detail(metrics: MarketMetrics) -> str | None:
+    income = _fmt_int(metrics.median_income)
+    return f"median income ${income}" if income else None
+
+
+def _leasing_pressure_detail(metrics: MarketMetrics) -> str | None:
+    vacancy = _fmt_percent(metrics.vacancy_rate)
+    return f"vacancy {vacancy}" if vacancy else None
+
+
+def _access_detail(metrics: MarketMetrics) -> str | None:
+    no_vehicle = _fmt_percent(metrics.no_vehicle_household_share)
+    transit = _fmt_percent(metrics.public_transit_commute_share)
+    walk = _fmt_percent(metrics.walking_commute_share)
+    return _joined_detail(
+        [
+            f"no vehicle {no_vehicle}" if no_vehicle else None,
+            f"transit {transit}" if transit else None,
+            f"walk {walk}" if walk else None,
+        ]
+    )
 
 
 def _score_city_momentum(metrics: MarketMetrics) -> tuple[int, list[str]]:
@@ -413,9 +531,12 @@ def _score_company_fit(enrichment: CompanyEnrichment) -> _CompanyFitResult:
                 "product_fit": product_fit_score,
             },
             extraction_audit={
-                "leasing_volume": leasing_volume_audit,
-                "operational_complexity": operations_audit,
-                "product_fit": product_fit_audit,
+                signal: _with_max_contribution(signal, audit)
+                for signal, audit in (
+                    ("leasing_volume", leasing_volume_audit),
+                    ("operational_complexity", operations_audit),
+                    ("product_fit", product_fit_audit),
+                )
             },
         ),
     )
@@ -618,9 +739,9 @@ def _score_product_fit(
         score = 0
 
     if bucket in {"Very Strong", "Strong"}:
-        reasons.append("Company evidence maps to EliseAI use cases like leasing or resident operations.")
+        reasons.append("Company evidence maps to core use cases like leasing or resident operations.")
     elif bucket == "Moderate":
-        reasons.append("Company evidence suggests partial EliseAI product fit.")
+        reasons.append("Company evidence suggests partial product fit.")
     elif bucket == "Weak":
         reasons.append("Company evidence is real-estate related but weak for residential leasing automation.")
     else:
@@ -654,9 +775,12 @@ def _score_property_fit(enrichment: CompanyEnrichment) -> _PropertyFitResult:
         "leasing_activity": leasing_score,
     }
     audit = {
-        "property_type": type_audit,
-        "property_scale": scale_audit,
-        "leasing_activity": leasing_audit,
+        signal: _with_max_contribution(signal, signal_audit)
+        for signal, signal_audit in (
+            ("property_type", type_audit),
+            ("property_scale", scale_audit),
+            ("leasing_activity", leasing_audit),
+        )
     }
     reasons = [
         _property_reason("Property type", type_audit),
@@ -1402,6 +1526,24 @@ def _boost_classified_bucket(
         if bucket == "Strong" and has_product_fit and (unit_count >= 250_000 or implicit_scale == "Very High"):
             return "Very Strong"
     return bucket
+
+
+# Ceiling per audited signal, mirroring the best bucket in the score tables
+# below. Stamped onto each audit so the UI can render "11/13" style sub-bars.
+_SIGNAL_MAX_CONTRIBUTION = {
+    "leasing_volume": 13,
+    "operational_complexity": 13,
+    "product_fit": 13,
+    "property_type": 6,
+    "property_scale": 6,
+    "leasing_activity": 4,
+}
+
+
+def _with_max_contribution(signal: str, audit: SignalAudit) -> SignalAudit:
+    return audit.model_copy(
+        update={"max_contribution": _SIGNAL_MAX_CONTRIBUTION[signal]}
+    )
 
 
 def _classified_score(signal: str, bucket: str) -> int:

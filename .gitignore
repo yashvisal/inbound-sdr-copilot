@@ -22,3 +22,7 @@ Thumbs.db
 
 # Backend: generated golden-case / validation reports
 backend/reports/
+
+# Local agent/skill tooling
+.agents/
+skills-lock.json

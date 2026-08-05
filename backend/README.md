@@ -10,10 +10,33 @@ uv run dev
 
 The API runs on `http://localhost:8000`.
 
+## Endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness check |
+| `GET` | `/api/leads` | Stored runs for the shared dashboard (samples + community) |
+| `GET` | `/api/quota` | Remaining monthly budget, plus the per-visitor daily limit |
+| `POST` | `/api/leads/analyze` | Enrich and score leads; 413 above `MAX_LEADS_PER_REQUEST`, 429 when a quota is hit |
+| `POST` | `/api/leads/generate-outreach` | Sales insights + personalized email for one analysis |
+
+Run storage and quotas live in Upstash Redis (`app/services/run_store.py`). When
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are unset, both degrade to
+no-ops so local development needs no external services.
+
+Two independent quotas guard the analyze endpoint, and either one can reject a
+request on its own: a global monthly budget (`MAX_RUNS_PER_MONTH`) that resets
+on the 1st, and a per-visitor daily allowance (`MAX_RUNS_PER_IP_PER_DAY`). A
+visitor who has spent today's allowance gets a 429 even when the month still has
+capacity left, so `GET /api/quota` reports both numbers. Slots are reserved for
+every lead in a batch up front and released again if the run fails.
+
 Useful verification commands:
 
 ```bash
 uv run pytest -q
+uv run python scripts/export_sample_analyses.py
+uv run python scripts/seed_sample_runs.py
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
 uv run python scripts/verify_company_fit.py --company "Harbor Residential" --address "The Morrison Apartments, 123 Main St" --property-snippet "The Morrison Apartments has 240 apartment units with available floor plans and now leasing."
 uv run python scripts/export_company_fit_golden_cases.py --live

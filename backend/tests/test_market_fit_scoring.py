@@ -1,6 +1,8 @@
+import pytest
+
 from app.models import LeadInput, MarketMetrics
 from app.scoring import score_lead
-from app.services.datausa import _population_history_from_records
+from app.services import census
 from app.services.geo import normalize_place_name
 
 
@@ -46,6 +48,74 @@ def test_austin_like_market_metrics_score_strong_market_fit() -> None:
         "High walking commute share suggests strong local walkability."
         in score.market_fit.reasons
     )
+
+
+def test_market_fit_breakdown_reconciles_with_section_score() -> None:
+    """Sub-scores minus the dampener must equal the reported Location Fit score."""
+
+    metrics = MarketMetrics(
+        population=2_711_226,
+        population_growth_rate=0.004,
+        median_gross_rent=1_900,
+        median_income=137_917,
+        renter_share=0.372,
+        housing_units=1_097,
+        vacancy_rate=0.231,
+        no_vehicle_household_share=0.328,
+        public_transit_commute_share=0.145,
+        walking_commute_share=0.410,
+    )
+    lead = LeadInput(
+        name="Maya Chen",
+        email="maya@harborresidential.com",
+        company="Harbor Residential",
+        address="55 E Monroe St",
+        city="Chicago",
+        state="IL",
+        country="US",
+    )
+
+    score = score_lead(
+        lead=lead,
+        market_metrics=metrics,
+        company_text="Harbor Residential property management apartments leasing communities",
+    )
+
+    breakdown = score.market_fit_breakdown
+    assert breakdown is not None
+    assert set(breakdown.score_breakdown) == {
+        "city_momentum",
+        "rental_demand",
+        "economics",
+        "leasing_pressure",
+        "access",
+    }
+    assert sum(sub.max_score for sub in breakdown.score_breakdown.values()) == 45
+    subtotal = sum(sub.score for sub in breakdown.score_breakdown.values())
+    assert subtotal - breakdown.dampener_penalty == score.market_fit.score
+    assert breakdown.dampener_penalty == 2
+
+    # Details carry the real Census values that drove each component.
+    assert "renter share 37%" in breakdown.score_breakdown["rental_demand"].detail
+    assert "vacancy 23%" in breakdown.score_breakdown["leasing_pressure"].detail
+
+
+def test_market_fit_breakdown_tolerates_missing_metrics() -> None:
+    lead = LeadInput(
+        name="Maya Chen",
+        email="maya@harborresidential.com",
+        company="Harbor Residential",
+        address="123 Main St",
+        city="Nowhere",
+        state="XX",
+        country="US",
+    )
+
+    score = score_lead(lead=lead, market_metrics=MarketMetrics(), company_text="")
+
+    breakdown = score.market_fit_breakdown
+    assert breakdown is not None
+    assert breakdown.score_breakdown["economics"].detail is None
 
 
 def test_small_housing_base_does_not_directly_penalize_market_fit() -> None:
@@ -151,36 +221,51 @@ def test_low_renter_high_vacancy_mixed_use_pattern_gets_light_dampener() -> None
     )
 
 
-def test_population_history_computes_growth_from_latest_window() -> None:
-    history = _population_history_from_records(
-        [
-            {"Year": 2024, "Population": 979539.0},
-            {"Year": 2023, "Population": 967862.0},
-            {"Year": 2022, "Population": 958202.0},
-        ]
+def _stub_place_population(monkeypatch, by_year: dict[str, int | None]) -> None:
+    async def fake(client, state_fips, place_fips, base_url):
+        return by_year.get(base_url)
+
+    monkeypatch.setattr(census, "_fetch_place_population", fake)
+
+
+@pytest.mark.anyio
+async def test_population_history_computes_growth_across_acs_vintages(monkeypatch) -> None:
+    _stub_place_population(
+        monkeypatch,
+        {census.ACS_BASE_URL: 979_539, census.ACS_GROWTH_BASE_URL: 958_202},
     )
 
+    history = await census.fetch_place_population_history("4805000")
+
+    assert history is not None
     assert history.latest_population == 979_539
-    assert history.latest_year == 2024
-    assert history.earliest_year == 2022
+    assert history.latest_year == int(census.ACS_YEAR)
+    assert history.earliest_year == int(census.ACS_GROWTH_BASE_YEAR)
     assert history.growth_rate is not None
     assert round(history.growth_rate, 4) == 0.0223
 
 
-def test_population_history_skips_malformed_rows() -> None:
-    history = _population_history_from_records(
-        [
-            {"Year": 2024, "Population": 979539.0},
-            {"Year": "", "Population": 1},
-            {"Year": 2023, "Population": "N/A"},
-            {"Year": 2022, "Population": 958202.0},
-        ]
+@pytest.mark.anyio
+async def test_population_history_survives_missing_baseline(monkeypatch) -> None:
+    """A failed baseline lookup should still yield population, just no growth."""
+
+    _stub_place_population(
+        monkeypatch,
+        {census.ACS_BASE_URL: 979_539, census.ACS_GROWTH_BASE_URL: None},
     )
 
+    history = await census.fetch_place_population_history("4805000")
+
+    assert history is not None
     assert history.latest_population == 979_539
-    assert history.latest_year == 2024
-    assert history.earliest_year == 2022
-    assert history.growth_rate is not None
+    assert history.growth_rate is None
+
+
+@pytest.mark.anyio
+async def test_population_history_is_none_without_current_population(monkeypatch) -> None:
+    _stub_place_population(monkeypatch, {})
+
+    assert await census.fetch_place_population_history("4805000") is None
 
 
 def test_place_name_normalization_handles_census_suffixes() -> None:

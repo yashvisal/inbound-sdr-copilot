@@ -15,9 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+
 import { analyzeLeadsWithOutreach } from "@/lib/api/client"
-import type { LeadInput } from "@/lib/api/types"
-import { useLeadStore } from "@/lib/store"
+import { QuotaError, type LeadInput } from "@/lib/api/types"
+import { announceCompletedRuns } from "@/lib/run-toast"
+import { toRunEntries, useLeadStore } from "@/lib/store"
 
 const HEADER_ALIASES: Record<string, keyof LeadInput> = {
   name: "name",
@@ -33,21 +36,35 @@ const HEADER_ALIASES: Record<string, keyof LeadInput> = {
   country: "country",
 }
 
+const APPROVAL_EMAIL = "yashvisal@gmail.com"
+
 export function CsvUploadDialog({
   open,
   onOpenChange,
+  maxLeads = 3,
+  onRunSettled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Rows allowed without approval; matches the per-visitor daily run limit. */
+  maxLeads?: number
+  /** Fired when a run finishes or fails, so the caller can refresh quota. */
+  onRunSettled?: () => void
 }) {
   const [file, setFile] = React.useState<File | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const setAnalyses = useLeadStore((state) => state.setAnalyses)
+  const [errorTitle, setErrorTitle] = React.useState("Upload failed")
+  const [quotaBlocked, setQuotaBlocked] = React.useState(false)
+  const mergeRuns = useLeadStore((state) => state.mergeRuns)
+  const addPending = useLeadStore((state) => state.addPending)
+  const removePending = useLeadStore((state) => state.removePending)
 
   function reset() {
     setFile(null)
     setError(null)
+    setErrorTitle("Upload failed")
+    setQuotaBlocked(false)
     setSubmitting(false)
   }
 
@@ -61,6 +78,7 @@ export function CsvUploadDialog({
     if (!file) return
     setSubmitting(true)
     setError(null)
+    let needsApproval = false
     try {
       const leads = await parseCsv(file)
       if (leads.length === 0) {
@@ -68,11 +86,57 @@ export function CsvUploadDialog({
           "No valid rows found. Required columns: name, email, company, address, city, state."
         )
       }
-      const analyses = await analyzeLeadsWithOutreach(leads)
-      setAnalyses(analyses, { personalized: true })
+      // Caught here rather than server-side so an oversized file gets the
+      // approval message instead of a bare rate-limit rejection.
+      if (leads.length > maxLeads) {
+        needsApproval = true
+        throw new Error(
+          `This file has ${leads.length} leads. Up to ${maxLeads} can be analyzed ` +
+            `without approval — email ${APPROVAL_EMAIL} to run a larger batch.`
+        )
+      }
+      // Parsing and limits are validated first; once they pass, close the
+      // dialog and let the rows analyze in the background.
+      const pendingIds = addPending(leads)
       reset()
       onOpenChange(false)
+
+      analyzeLeadsWithOutreach(leads)
+        .then((analyses) => {
+          const entries = toRunEntries(
+            analyses,
+            "community",
+            new Date().toISOString()
+          )
+          mergeRuns(entries, { personalized: true })
+          announceCompletedRuns(entries)
+        })
+        .catch((err) => {
+          toast.error(
+            err instanceof QuotaError
+              ? "Live runs unavailable"
+              : "Analysis failed",
+            {
+              description:
+                err instanceof Error ? err.message : "Something went wrong.",
+            }
+          )
+        })
+        .finally(() => {
+          removePending(pendingIds)
+          onRunSettled?.()
+        })
+      return
     } catch (err) {
+      const soft = needsApproval || err instanceof QuotaError
+      setQuotaBlocked(soft)
+      setErrorTitle(
+        needsApproval
+          ? "Approval needed"
+          : err instanceof QuotaError
+            ? "Live runs unavailable"
+            : "Upload failed"
+      )
       setError(err instanceof Error ? err.message : "Something went wrong.")
       setSubmitting(false)
     }
@@ -82,29 +146,33 @@ export function CsvUploadDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>CSV Upload</DialogTitle>
+          <DialogTitle>CSV upload</DialogTitle>
           <DialogDescription>
-            Upload a CSV with columns: name, email, company, address, city, state, and optionally country.
+            Up to {maxLeads} leads per file.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="grid gap-1.5">
-            <label htmlFor="csv-file" className="text-sm font-medium">
-              CSV file
-            </label>
-            <Input
-              id="csv-file"
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) =>
-                setFile(event.target.files?.[0] ?? null)
-              }
-              required
-            />
+          <Input
+            id="csv-file"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            required
+          />
+          <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Required columns
+            </p>
+            <p className="mt-1 font-mono text-xs text-foreground/80">
+              name, email, company, address, city, state
+            </p>
+            <p className="mt-1.5 text-xs text-muted-foreground/70">
+              country optional, defaults to US
+            </p>
           </div>
           {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Upload failed</AlertTitle>
+            <Alert variant={quotaBlocked ? "default" : "destructive"}>
+              <AlertTitle>{errorTitle}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -123,7 +191,7 @@ export function CsvUploadDialog({
               ) : (
                 <FileSpreadsheet className="size-4" />
               )}
-              {submitting ? "Analyzing..." : "Run Analysis"}
+              {submitting ? "Analyzing..." : "Run analysis"}
             </Button>
           </DialogFooter>
         </form>

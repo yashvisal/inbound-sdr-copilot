@@ -7,8 +7,8 @@ from app.services.census import (
     fetch_neighborhood_market,
     fetch_place_market,
     fetch_place_market_by_geoid,
+    fetch_place_population_history,
 )
-from app.services.datausa import fetch_population_history
 from app.services.geocoder import geocode_address
 
 logger = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
             missing_data.append("Census Geocoder could not resolve the property address.")
 
     if geography and geography.place_geoid:
-        datausa_place_id = f"16000US{geography.place_geoid}"
+        place_geoid = geography.place_geoid
         place_name = geography.place_name or f"{lead.city}, {lead.state}"
         try:
             place = await fetch_place_market_by_geoid(geography.place_geoid)
@@ -113,7 +113,7 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
             place = None
             missing_data.append("Place-level ACS request failed for resolved geography.")
     else:
-        datausa_place_id = None
+        place_geoid = None
         place_name = f"{lead.city}, {lead.state}"
         try:
             place = await fetch_place_market(lead.city, lead.state)
@@ -123,37 +123,47 @@ async def enrich_market(lead: LeadInput) -> MarketEnrichment:
             missing_data.append(f"Place-level ACS request failed for {lead.city}, {lead.state}.")
 
     if place is None:
-        if datausa_place_id is None:
+        if place_geoid is None:
             missing_data.append(f"Could not resolve Census place for {lead.city}, {lead.state}.")
     else:
-        datausa_place_id = place.datausa_place_id
+        place_geoid = f"{place.state_fips}{place.place_fips}"
         place_name = place.name
         metrics.median_gross_rent = place.metrics.median_gross_rent
+        metrics.population = place.metrics.population
 
-    if datausa_place_id:
+    history_failed = False
+    if place_geoid:
         try:
-            population_history = await fetch_population_history(datausa_place_id)
+            population_history = await fetch_place_population_history(place_geoid)
         except Exception:
-            logger.exception("Data USA population history fetch failed for %s", datausa_place_id)
+            logger.exception("ACS population history fetch failed for %s", place_geoid)
             population_history = None
-            missing_data.append("Data USA population history was unavailable.")
+            history_failed = True
+            missing_data.append("ACS population history was unavailable.")
     else:
         population_history = None
 
     if population_history is None or population_history.latest_population is None:
-        missing_data.append("Population data was unavailable from Data USA.")
+        # A fetch failure already reported itself above; don't say it twice.
+        if not history_failed:
+            missing_data.append("Population data was unavailable from the Census ACS.")
     else:
         metrics.population = population_history.latest_population
         metrics.population_growth_rate = population_history.growth_rate
+        growth = population_history.growth_rate
+        growth_text = (
+            f"{growth:+.1%} since {population_history.earliest_year}"
+            if growth is not None
+            else f"growth since {population_history.earliest_year} was unavailable"
+        )
         evidence.append(
             SourceSnippet(
-                source="Data USA",
+                source="Census ACS",
                 title=f"{place_name} population trend",
-                url="https://api.datausa.io/tesseract/data.jsonrecords",
+                url=f"https://api.census.gov/data/{population_history.latest_year}/acs/acs5",
                 snippet=(
-                    f"Latest population was {population_history.latest_population:,} "
-                    f"in {population_history.latest_year}; growth is calculated across "
-                    f"available history since {population_history.earliest_year}."
+                    f"Population was {population_history.latest_population:,} in the "
+                    f"{population_history.latest_year} ACS 5-year estimate ({growth_text})."
                 ),
             )
         )

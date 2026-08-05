@@ -88,8 +88,8 @@ async def _call_openai_classifier(
                 "Content-Type": "application/json",
             },
             json={
+                # See company_classifier: gpt-5.6 models reject temperature=0.
                 "model": model,
-                "temperature": 0,
                 "messages": [
                     {"role": "system", "content": _system_prompt()},
                     {
