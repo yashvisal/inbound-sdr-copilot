@@ -119,14 +119,45 @@
 --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Hero backdrop: a fine line grid that fades out radially, plus a soft glow
+   from the top. Static by design — texture, not motion. */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 4.5%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 4.5%) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(
+    ellipse 90% 80% at 50% 30%,
+    black 25%,
+    transparent 78%
+  );
+}
+.hero-glow {
+  background: radial-gradient(
+    ellipse 60% 45% at 50% -10%,
+    oklch(1 0 0 / 6%),
+    transparent
+  );
+}
+
 @layer base {
 * {
   @apply border-border outline-ring/50;
 }
 html {
   scrollbar-gutter: stable;
+  /* Paint the page color on the root so rubber-band overscroll reveals the
+     background instead of the bare canvas. */
+  @apply bg-background;
+  /* Stop the scroll chain at the page: no bounce past the top/bottom edge. */
+  overscroll-behavior-y: none;
+  /* Decorative full-bleed layers must never create a sideways scroll axis.
+     `clip` (not `hidden`) keeps position: sticky working on the header. */
+  overflow-x: clip;
 }
 body {
   @apply bg-background font-sans text-foreground;
+  overscroll-behavior-y: none;
+  overflow-x: clip;
 }
 }
