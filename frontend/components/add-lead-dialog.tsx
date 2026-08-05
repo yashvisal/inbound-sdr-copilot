@@ -40,7 +40,6 @@ export function AddLeadDialog({
   onRunSettled?: () => void
 }) {
   const [form, setForm] = React.useState<LeadInput>(emptyLead)
-  const [submitting, setSubmitting] = React.useState(false)
   const mergeRuns = useLeadStore((state) => state.mergeRuns)
   const addPending = useLeadStore((state) => state.addPending)
   const removePending = useLeadStore((state) => state.removePending)
@@ -51,7 +50,6 @@ export function AddLeadDialog({
 
   function reset() {
     setForm(emptyLead)
-    setSubmitting(false)
   }
 
   function handleOpenChange(next: boolean) {
@@ -61,7 +59,6 @@ export function AddLeadDialog({
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    setSubmitting(true)
 
     // Close the dialog right away; the lead shows up in the table as a
     // pending row while the analysis runs in the background.
@@ -164,11 +161,10 @@ export function AddLeadDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit">
               Run analysis
             </Button>
           </DialogFooter>

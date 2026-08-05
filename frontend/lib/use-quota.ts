@@ -37,7 +37,14 @@ function readCache(): QuotaState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(CACHE_KEY);
-    cached = raw ? (JSON.parse(raw) as QuotaState) : null;
+    const parsed = raw ? (JSON.parse(raw) as Partial<QuotaState>) : null;
+    // A hand-edited or half-written entry would otherwise render "NaN/NaN".
+    cached =
+      parsed &&
+      typeof parsed.runs_remaining === "number" &&
+      typeof parsed.runs_limit === "number"
+        ? (parsed as QuotaState)
+        : null;
   } catch {
     cached = null;
   }

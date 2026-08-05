@@ -13,6 +13,10 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
 ]
 
+const RELATIVE_FORMATTER = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+})
+
 /** "3 hours ago" style label for a stored run timestamp. */
 export function formatRelativeTime(iso: string | null): string | null {
   if (!iso) return null
@@ -20,10 +24,9 @@ export function formatRelativeTime(iso: string | null): string | null {
   if (Number.isNaN(timestamp)) return null
 
   const seconds = Math.round((timestamp - Date.now()) / 1000)
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
   for (const [unit, unitSeconds] of RELATIVE_UNITS) {
     if (Math.abs(seconds) >= unitSeconds) {
-      return formatter.format(Math.round(seconds / unitSeconds), unit)
+      return RELATIVE_FORMATTER.format(Math.round(seconds / unitSeconds), unit)
     }
   }
   return "just now"

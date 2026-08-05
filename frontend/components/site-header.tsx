@@ -22,7 +22,7 @@ export function SiteHeader({
       <div className="flex items-center gap-3">
         {showBack && (
           <Button variant="ghost" size="icon" className="size-8" asChild>
-            <Link href={backHref}>
+            <Link href={backHref} aria-label="Back to leads">
               <ArrowLeft className="size-4" />
             </Link>
           </Button>
