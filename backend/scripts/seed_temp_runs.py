@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import json
 import sys
 from pathlib import Path
@@ -24,14 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config import get_settings
 from app.models import LeadAnalysis
-from app.services.run_store import (
-    INDEX_KEY,
-    RECORD_PREFIX,
-    _command,
-    build_run_id,
-    list_runs,
-    save_run,
-)
+from app.services.run_store import build_run_id, delete_run, list_runs, save_run
 
 SAMPLE_PATH = Path(__file__).resolve().parents[2] / "frontend" / "lib" / "sample-analyses.json"
 
@@ -53,7 +47,7 @@ def build_temp_analyses(count: int) -> list[LeadAnalysis]:
 
     analyses: list[LeadAnalysis] = []
     for index in range(count):
-        raw = json.loads(json.dumps(templates[index % len(templates)]))
+        raw = copy.deepcopy(templates[index % len(templates)])
         number = index + 1
         city, state = CITIES[index % len(CITIES)]
 
@@ -69,7 +63,12 @@ def build_temp_analyses(count: int) -> list[LeadAnalysis]:
         # Spread scores across the priority bands so ordering and rank numbering
         # are obvious while paging. Sub-scores keep their cloned values, so temp
         # rows are for layout testing only — they will not reconcile.
-        raw["score"]["final_score"] = max(10, 95 - index * 3)
+        final_score = max(10, 95 - index * 3)
+        raw["score"]["final_score"] = final_score
+        # Same thresholds as app.scoring, so the badge matches the number.
+        raw["score"]["priority"] = (
+            "High" if final_score >= 75 else "Medium" if final_score >= 50 else "Low"
+        )
         analyses.append(LeadAnalysis.model_validate(raw))
     return analyses
 
@@ -89,8 +88,7 @@ async def clear() -> None:
         if not str(lead.get("email", "")).endswith(f"@{TEMP_EMAIL_DOMAIN}"):
             continue
         run_id = build_run_id(LeadAnalysis.model_validate(record["analysis"]).lead)
-        await _command("DEL", f"{RECORD_PREFIX}{run_id}")
-        await _command("ZREM", INDEX_KEY, run_id)
+        await delete_run(run_id)
         removed += 1
         print(f"  removed {lead.get('name')}")
     print(f"Removed {removed} temp runs.")
