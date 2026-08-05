@@ -4,6 +4,13 @@ from app.config import Settings
 from app.services import run_store
 
 
+@pytest.fixture
+def anyio_backend() -> str:
+    """Single async backend for every anyio test module in the suite."""
+
+    return "asyncio"
+
+
 @pytest.fixture(autouse=True)
 def disable_run_store(monkeypatch):
     """Keep the test suite off the shared run store.

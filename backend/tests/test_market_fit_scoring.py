@@ -268,11 +268,6 @@ async def test_population_history_is_none_without_current_population(monkeypatch
     assert await census.fetch_place_population_history("4805000") is None
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
-
 def test_place_name_normalization_handles_census_suffixes() -> None:
     assert normalize_place_name("Austin city, Texas") == "austin"
     assert normalize_place_name("Austin") == "austin"

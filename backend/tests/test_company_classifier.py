@@ -896,6 +896,9 @@ def test_strong_company_without_market_data_is_not_high_priority() -> None:
     )
 
     assert score.final_score >= 50
+    # The documented ceiling: without market data the other two sections cannot
+    # reach High on their own.
+    assert score.final_score <= 55
     assert score.priority == "Medium"
 
 
