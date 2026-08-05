@@ -20,7 +20,7 @@ from app.services.outreach import generate_outreach
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name)
+app = FastAPI(title=settings.app_name, root_path=settings.api_root_path)
 
 # FRONTEND_ORIGIN accepts a comma-separated list so local dev and the deployed
 # frontend can be allowed at the same time.

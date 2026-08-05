@@ -15,6 +15,10 @@ class Settings(BaseSettings):
         default="http://localhost:3000",
         alias="FRONTEND_ORIGIN",
     )
+    # Path prefix this API is mounted under. Empty locally, where uvicorn serves
+    # it at the root; set to "/api/backend" when it sits behind the frontend on
+    # one Vercel domain, so Starlette strips the prefix before matching routes.
+    api_root_path: str = Field(default="", alias="API_ROOT_PATH")
     news_api_key: str | None = Field(default=None, alias="NEWS_API_KEY")
     serper_api_key: str | None = Field(default=None, alias="SERPER_API_KEY")
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")

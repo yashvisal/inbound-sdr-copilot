@@ -113,12 +113,27 @@ uv run python scripts/verify_company_fit.py --live --company "Greystar"
 
 ## Deploying
 
-Two Vercel projects from one repo:
+One Vercel project runs both apps as services (see `vercel.json`): the Next.js
+frontend at the root and the FastAPI backend behind `/api/backend` on the same
+domain, so browser calls are same-origin and need no CORS.
 
-1. **Backend** — root directory `backend/`. Set `CENSUS_API_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, optionally `OPENAI_API_KEY` / `SERPER_API_KEY`, and `FRONTEND_ORIGIN` to your frontend URL (comma-separated list, so `http://localhost:3000` can stay).
-2. **Frontend** — root directory `frontend/`. Set `NEXT_PUBLIC_API_BASE_URL` to the backend URL.
+Environment variables on that project:
+
+| Variable | Value |
+| --- | --- |
+| `API_ROOT_PATH` | `/api/backend` — the prefix the API is mounted under |
+| `NEXT_PUBLIC_API_BASE_URL` | `/api/backend` — relative, so it follows the domain |
+| `CENSUS_API_KEY` | Required for meaningful Location Fit scores |
+| `SERPER_API_KEY`, `OPENAI_API_KEY` | Optional; without them the rule-based fallbacks run |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared dashboard and quotas |
+| `MAX_RUNS_PER_MONTH`, `MAX_RUNS_PER_IP_PER_DAY` | Spend caps; `100` / `3` in production |
 
 Then run `seed_sample_runs.py` once to populate the shared dashboard.
+
+To deploy the two apps as separate projects instead, set each project's root
+directory to `backend/` or `frontend/`, leave `API_ROOT_PATH` empty, and point
+`NEXT_PUBLIC_API_BASE_URL` at the backend's absolute URL plus `FRONTEND_ORIGIN`
+at the frontend's.
 
 ## Limitations
 
