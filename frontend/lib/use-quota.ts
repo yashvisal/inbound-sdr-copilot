@@ -70,24 +70,33 @@ export function useQuota(): QuotaState & { refresh: () => void } {
   const [state, setState] = React.useState<QuotaState>(INITIAL);
 
   const load = React.useCallback(async () => {
-    try {
-      const quota = await fetchQuota();
-      const next: QuotaState = {
-        loaded: true,
-        enabled: quota.enabled,
-        runs_remaining: quota.runs_remaining,
-        runs_limit: quota.runs_limit,
-        perVisitorDailyLimit:
-          quota.per_visitor_daily_limit || DEFAULT_DAILY_LIMIT,
-      };
-      writeCache(next);
-      setState(next);
-    } catch {
-      // Quota unknown (backend unreachable): leave the UI unrestricted.
-      const next = { ...(readCache() ?? INITIAL), loaded: true };
-      writeCache(next);
-      setState(next);
+    // On a cold refresh there is no cache and the backend function may still
+    // be waking up, so the first request can fail or time out. Retry a couple
+    // of times before giving up; otherwise the meter never appears until the
+    // next full reload.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const quota = await fetchQuota();
+        const next: QuotaState = {
+          loaded: true,
+          enabled: quota.enabled,
+          runs_remaining: quota.runs_remaining,
+          runs_limit: quota.runs_limit,
+          perVisitorDailyLimit:
+            quota.per_visitor_daily_limit || DEFAULT_DAILY_LIMIT,
+        };
+        writeCache(next);
+        setState(next);
+        return;
+      } catch {
+        if (readCache()) break;
+        await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+      }
     }
+    // Quota unknown (backend unreachable): leave the UI unrestricted.
+    const next = { ...(readCache() ?? INITIAL), loaded: true };
+    writeCache(next);
+    setState(next);
   }, []);
 
   React.useEffect(() => {

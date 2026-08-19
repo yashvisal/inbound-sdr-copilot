@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Inbound SDR Copilot",
-  description: "Lead enrichment and scoring system for property management SDRs.",
+  description:
+    "Score inbound property-management leads from public data, see the evidence behind every point, and draft the first email.",
 };
 
 export default function RootLayout({
