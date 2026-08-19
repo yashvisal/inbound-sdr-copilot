@@ -383,8 +383,8 @@ def test_failed_analysis_releases_the_reserved_quota(monkeypatch) -> None:
     assert released == [1]
 
 
-def test_stored_community_contacts_are_redacted(monkeypatch) -> None:
-    """The dashboard is public, so visitor-submitted contacts are blurred."""
+def test_stored_contacts_are_served_as_stored(monkeypatch) -> None:
+    """Demo leads use invented contacts, so nothing is blurred on the way out."""
 
     analysis = _analysis_payload()
 
@@ -408,14 +408,9 @@ def test_stored_community_contacts_are_redacted(monkeypatch) -> None:
     client = TestClient(app)
 
     runs = client.get("/api/leads").json()["runs"]
-    community = next(run for run in runs if run["source"] == "community")
-    sample = next(run for run in runs if run["source"] == "sample")
-
-    assert community["analysis"]["lead"]["email"] == "m***@harborresidential.com"
-    assert community["analysis"]["lead"]["address"] == "*** Main St"
-    # Curated samples use invented contacts and stay readable.
-    assert sample["analysis"]["lead"]["email"] == "maya@harborresidential.com"
-    assert sample["analysis"]["lead"]["address"] == "123 Main St"
+    for run in runs:
+        assert run["analysis"]["lead"]["email"] == "maya@harborresidential.com"
+        assert run["analysis"]["lead"]["address"] == "123 Main St"
 
 
 def _analysis_payload() -> dict:

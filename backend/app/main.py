@@ -1,4 +1,3 @@
-import re
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -53,33 +52,6 @@ QUOTA_MESSAGES = {
 }
 
 
-def _redact_community_contact(record: dict[str, Any]) -> dict[str, Any]:
-    """Blur contact details on runs submitted by visitors.
-
-    The Add Lead dialog asks people not to enter real details, but this list is
-    public, so whatever arrives is redacted before it is served back. Curated
-    sample records use invented contacts and are left readable.
-    """
-
-    if record.get("source") != "community":
-        return record
-
-    lead = record.get("analysis", {}).get("lead")
-    if not isinstance(lead, dict):
-        return record
-
-    redacted = {**record, "analysis": {**record["analysis"], "lead": {**lead}}}
-    email = str(lead.get("email", ""))
-    local, separator, domain = email.partition("@")
-    if separator:
-        redacted["analysis"]["lead"]["email"] = f"{local[:1]}***@{domain}"
-    # Drop the street number; the property and city still identify the market.
-    redacted["analysis"]["lead"]["address"] = re.sub(
-        r"\b\d+\b", "***", str(lead.get("address", "")), count=1
-    )
-    return redacted
-
-
 def _client_ip(request: Request) -> str:
     """Best-effort caller identity. Vercel sets x-forwarded-for on every request."""
 
@@ -109,7 +81,7 @@ async def read_quota() -> QuotaResponse:
 
 @app.get("/api/leads", response_model=StoredRunsResponse)
 async def list_stored_leads() -> StoredRunsResponse:
-    runs = [_redact_community_contact(record) for record in await run_store.list_runs()]
+    runs = await run_store.list_runs()
     return StoredRunsResponse(runs=runs)
 
 
