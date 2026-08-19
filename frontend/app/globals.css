@@ -161,3 +161,12 @@ body {
   overflow-x: clip;
 }
 }
+
+/* Radix dialogs lock body scroll and add a right margin equal to the
+   scrollbar width so content doesn't jump. `scrollbar-gutter: stable` on
+   the root already reserves that space, so the extra margin would shift
+   the page instead of preventing it. Kept outside @layer so it beats the
+   inline stylesheet remove-scroll injects. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
