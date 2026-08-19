@@ -145,6 +145,13 @@ async def fetch_neighborhood_market(
             tract_metrics = metrics
 
         if effective_block_group and tract_metrics:
+            # ACS suppresses medians for small block groups (reported as
+            # -666666666, parsed to None). Fall back to the tract figure rather
+            # than scoring the neighborhood as if it had no data.
+            if metrics.median_income is None:
+                metrics.median_income = tract_metrics.median_income
+            if metrics.median_gross_rent is None:
+                metrics.median_gross_rent = tract_metrics.median_gross_rent
             block_weight, tract_weight = _neighborhood_weights(metrics.housing_units)
             metrics.neighborhood_ratios_blended_with_tract = True
             metrics.renter_share = _blend_ratio(
