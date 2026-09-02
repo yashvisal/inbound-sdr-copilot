@@ -16,6 +16,7 @@ because the downstream OpenAI classifiers require cited evidence to be a literal
 substring of the snippet text.
 """
 
+import asyncio
 import html
 import logging
 import re
@@ -233,34 +234,49 @@ async def _search_parallel(
 
 
 async def _search_serper(*, queries: list[str], max_results: int) -> WebSearchResult:
-    """Fallback provider: one request per keyword query, organic results only."""
+    """Fallback provider: one request per keyword query, organic results only.
+
+    Serper has no multi-query endpoint, so the queries fan out as concurrent
+    requests sharing one client. That bounds the whole fallback to a single
+    request timeout instead of one per query, which matters because this path
+    usually runs after the primary provider has already spent its own timeout.
+
+    Serper also has no equivalent of the primary provider's ``after_date``
+    filter and reports dates as free text, so the freshness window is not
+    enforced here; callers still rank dated hits newest-first.
+    """
 
     settings = get_settings()
     hits: dict[str, WebSearchHit] = {}
     warnings: list[str] = []
 
-    async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
-        for query in queries:
-            try:
-                response = await client.post(
-                    SERPER_SEARCH_URL,
-                    headers={
-                        "X-API-KEY": settings.serper_api_key or "",
-                        "Content-Type": "application/json",
-                        "User-Agent": _USER_AGENT,
-                    },
-                    json={"q": query, "num": max_results},
-                )
-                response.raise_for_status()
-                payload = response.json()
-            except (httpx.HTTPError, ValueError, TypeError) as exc:
-                logger.warning(
-                    "Fallback search failed for query %s (%s)", query, type(exc).__name__
-                )
-                warnings.append(f"Search results were unavailable for query: {query}")
-                continue
+    async def fetch(client: httpx.AsyncClient, query: str) -> dict | None:
+        try:
+            response = await client.post(
+                SERPER_SEARCH_URL,
+                headers={
+                    "X-API-KEY": settings.serper_api_key or "",
+                    "Content-Type": "application/json",
+                    "User-Agent": _USER_AGENT,
+                },
+                json={"q": query, "num": max_results},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (httpx.HTTPError, ValueError, TypeError) as exc:
+            logger.warning("Fallback search failed for query %s (%s)", query, type(exc).__name__)
+            return None
+        return payload if isinstance(payload, dict) else None
 
-            for item in (payload.get("organic") or [])[:max_results]:
+    async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        payloads = await asyncio.gather(*(fetch(client, query) for query in queries))
+
+    for query, payload in zip(queries, payloads):
+        if payload is None:
+            warnings.append(f"Search results were unavailable for query: {query}")
+            continue
+
+        for item in (payload.get("organic") or [])[:max_results]:
                 if not isinstance(item, dict):
                     continue
                 url = clean_whitespace(str(item.get("link") or ""))

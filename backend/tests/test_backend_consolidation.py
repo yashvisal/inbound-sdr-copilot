@@ -565,6 +565,9 @@ def test_website_step_falls_back_to_the_html_parser_when_extract_is_empty(monkey
     assert fetched == ["https://harbor.example/"]
     assert evidence.enrichment.website_title == "Harbor Residential"
     assert evidence.publish_date is None
+    assert evidence.warnings == [
+        "Page content extraction failed; fell back to reading the page directly."
+    ]
 
 
 def test_website_step_reports_nothing_when_extract_and_the_parser_both_fail(monkeypatch) -> None:

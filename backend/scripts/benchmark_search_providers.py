@@ -607,8 +607,12 @@ def _headline(rows: list[dict[str, Any]], *, configs: list[str]) -> list[str]:
     def confidence_low(config: str) -> int:
         return sum(1 for row in _ok_rows(rows, config) if row["confidence"] == "Low")
 
-    live = [config for config in configs if config != "serper"]
-    best = live[-1] if live else "serper"
+    # The headline prose describes the full stack, so pick it by preference
+    # rather than by the order the configs were passed on the command line.
+    best = next(
+        (name for name in ("parallel", "parallel-search") if name in configs),
+        "serper",
+    )
 
     bullets = [
         "- **Latency: search got roughly twice as fast.** Median company search "
@@ -1020,6 +1024,13 @@ def main() -> None:
 
     if args.merge and json_path.exists():
         previous = json.loads(json_path.read_text(encoding="utf-8"))
+        # Rows are joined by lead_index, so the saved panel has to be the one
+        # that ran now; otherwise old rows land under the wrong lead.
+        if previous.get("leads") != leads or previous.get("repeats") != args.repeats:
+            parser.error(
+                "--merge needs the same lead panel and --repeats as the saved run; "
+                "re-run without --merge or match the saved settings."
+            )
         kept = [row for row in previous.get("rows", []) if row["config"] not in configs]
         rows = kept + rows
         configs = [name for name in CONFIG_ORDER if any(row["config"] == name for row in rows)]

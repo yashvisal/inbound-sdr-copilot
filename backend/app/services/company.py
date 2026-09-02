@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -184,6 +184,10 @@ class WebsiteEvidence:
 
     enrichment: CompanyEnrichment
     publish_date: str | None = None
+    # Why the extraction provider did not supply this evidence, when the raw
+    # HTML fallback had to. Surfaced as missing-data so a run shows that the
+    # website step degraded even though it produced something.
+    warnings: list[str] = field(default_factory=list)
 
 
 class _HomepageParser(HTMLParser):
@@ -266,6 +270,7 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
             missing_data.append(f"Company website metadata was unavailable for {website_url}.")
         else:
             website = website_evidence.enrichment
+            missing_data.extend(website_evidence.warnings)
             evidence.insert(
                 0,
                 SourceSnippet(
@@ -438,7 +443,12 @@ async def _fetch_website_evidence(
     fallback = await _fetch_website_metadata(primary_url)
     if fallback is None:
         return None
-    return WebsiteEvidence(enrichment=fallback)
+    warnings = list(result.warnings)
+    if not warnings and (result.errors or result.provider != "none"):
+        warnings.append(
+            "Page content extraction returned no usable page; fell back to reading the page directly."
+        )
+    return WebsiteEvidence(enrichment=fallback, warnings=warnings)
 
 
 def _website_evidence_from_pages(
@@ -961,8 +971,7 @@ def _mentions_submitted_property(
         return False
     normalized_address = _normalize_address_token(lead.address)
     normalized_text = _normalize_address_token(text)
-    street_number_match = re.search(r"\b\d+\b", lead.address)
-    street_number = street_number_match.group(0) if street_number_match else ""
+    street_number = _house_number(lead.address)
     street_name = _street_name_token(lead.address)
     address_match = bool(normalized_address and normalized_address in normalized_text)
     street_match = bool(street_number and street_name and street_number in text and street_name in normalized_text)
@@ -989,7 +998,13 @@ def _normalize_address_token(value: str) -> str:
 def _street_name_token(address: str) -> str:
     normalized = _normalize_address_token(address)
     parts = normalized.split()
-    if parts and parts[0].isdigit():
+    # The street name starts after the house number, wherever that sits: a
+    # unit or suite prefix ("Suite 200, 500 Main St") must not be mistaken
+    # for the street.
+    house_number = _house_number(address)
+    if house_number and house_number in parts:
+        parts = parts[parts.index(house_number) + 1 :]
+    elif parts and parts[0].isdigit():
         parts = parts[1:]
     stop_tokens = {"new", "york", "ny", "tx", "il", "mi", "al", "ca", "fl", "austin", "plano", "chicago"}
     tokens = [part for part in parts if part not in stop_tokens and not part.isdigit()]
@@ -1067,6 +1082,22 @@ _STREET_ADDRESS_RE = re.compile(
 )
 
 
+def _house_number(address: str) -> str:
+    """The street number of an address, or "" when it has none.
+
+    Taken from the address shape rather than the first digits in the string, so
+    "Suite 200, 500 Main St" yields "500". Falls back to the first number only
+    when no street-address shape is present.
+    """
+
+    lowered = address.lower()
+    shaped = _STREET_ADDRESS_RE.search(lowered)
+    if shaped:
+        return shaped.group(1)
+    first = re.search(r"\b\d+\b", lowered)
+    return first.group(0) if first else ""
+
+
 def _contains_different_street_address(text: str, lead: LeadInput) -> bool:
     """True when the text names a street address with a different house number.
 
@@ -1077,8 +1108,7 @@ def _contains_different_street_address(text: str, lead: LeadInput) -> bool:
     pattern itself rather than to any nearby digits.
     """
 
-    submitted_number_match = re.search(r"\b\d+\b", lead.address)
-    submitted_number = submitted_number_match.group(0) if submitted_number_match else ""
+    submitted_number = _house_number(lead.address)
     if not submitted_number:
         return False
     lowered = text.lower()

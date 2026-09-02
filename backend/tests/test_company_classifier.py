@@ -1026,3 +1026,22 @@ def test_property_evidence_ignores_unit_counts_and_zip_codes_near_street_suffix(
         "214 barton",
     ]
     assert "the catherine" in _address_match_terms(lead, None)
+
+
+def test_house_number_comes_from_the_address_shape() -> None:
+    from app.services.company import _contains_different_street_address, _house_number
+
+    assert _house_number("Suite 200, 500 Main St") == "500"
+    assert _house_number("The Catherine, 214 Barton Springs Rd") == "214"
+    assert _house_number("Building 7") == "7"
+    assert _house_number("The Eugene") == ""
+
+    lead = _lead()
+    lead.address = "Suite 200, 500 Main St"
+    lead.city = "Austin"
+    lead.state = "TX"
+    assert not _contains_different_street_address(
+        "apartments at 500 main st with 12 units available",
+        lead,
+    )
+    assert _is_usable_property_evidence("500 main st apartments now leasing floor plans", lead)

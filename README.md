@@ -111,12 +111,12 @@ pnpm install
 pnpm dev                # http://localhost:3000
 ```
 
-Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html)) is needed for meaningful Location Fit scores. `PARALLEL_API_KEY` ([platform.parallel.ai](https://platform.parallel.ai)) and `OPENAI_API_KEY` unlock live company evidence and LLM-written outreach; `SERPER_API_KEY` is an optional search fallback; without them the system falls back to rule-based classification and template outreach. Upstash credentials are optional locally — without them, run storage and quotas are no-ops.
+Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html)) is needed for meaningful Location Fit scores. `PARALLEL_API_KEY` ([platform.parallel.ai](https://platform.parallel.ai)) and `OPENAI_API_KEY` unlock live company evidence and LLM-written outreach; `SERPER_API_KEY` is an optional search fallback, used automatically when the Parallel key is unset or a Parallel call fails, or exclusively when `WEB_SEARCH_PROVIDER=serper`; without any of them the system falls back to rule-based classification and template outreach. Upstash credentials are optional locally — without them, run storage and quotas are no-ops.
 
 **Tests and tooling:**
 
 ```bash
-uv run pytest -q                                  # 132 tests
+uv run pytest -q                                  # 133 tests
 uv run python scripts/export_sample_analyses.py   # regenerate bundled demo data
 uv run python scripts/seed_sample_runs.py         # push samples to the shared dashboard
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
@@ -136,7 +136,9 @@ Environment variables on that project:
 | `NEXT_PUBLIC_API_BASE_URL` | `/api/backend` — relative, so it follows the domain |
 | `CENSUS_API_KEY` | Required for meaningful Location Fit scores |
 | `PARALLEL_API_KEY`, `OPENAI_API_KEY` | Optional; without them the rule-based fallbacks run |
-| `SERPER_API_KEY` | Optional web-search fallback when Parallel is unset or failing |
+| `SERPER_API_KEY` | Optional web-search fallback, used when `PARALLEL_API_KEY` is unset or a Parallel call fails |
+| `WEB_SEARCH_PROVIDER` | `parallel` (default) or `serper` to pin the fallback as the provider |
+| `WEB_EXTRACT_ENABLED` | `true` (default); `false` skips Parallel Extract and reads company sites with the HTML parser |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared dashboard and quotas |
 | `MAX_RUNS_PER_MONTH`, `MAX_RUNS_PER_IP_PER_DAY` | Spend caps; `100` / `3` in production |
 
