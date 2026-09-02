@@ -92,6 +92,8 @@ export interface SourceSnippet {
   title: string | null;
   url: string | null;
   snippet: string;
+  /** ISO publish date, when the search provider reported one. */
+  publish_date?: string | null;
 }
 
 export interface AddressResolution {

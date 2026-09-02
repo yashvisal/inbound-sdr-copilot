@@ -19,6 +19,12 @@ from app.services import lead_processing
 from app.services import run_store
 from app.services.company import CompanyEnrichmentResult, extract_company_signals
 from app.services.enrichment import EnrichmentBundle
+from app.services.web_search import (
+    WebExtractPage,
+    WebExtractResult,
+    WebSearchHit,
+    WebSearchResult,
+)
 
 
 def _lead() -> LeadInput:
@@ -236,20 +242,25 @@ def test_company_enrichment_fetches_evidence_once_then_runs_classifiers_concurre
         "company_search": 0,
         "property_search": 0,
         "osm": 0,
+        "extract": 0,
         "website": 0,
     }
     order: list[str] = []
 
     async def fake_fetch_search_snippets(lead: LeadInput):
         counts["company_search"] += 1
-        return [
-            SourceSnippet(
-                source="Serper",
-                title="Harbor Residential",
-                url="https://harbor.example",
-                snippet="Harbor manages apartment communities and leasing operations.",
-            )
-        ], []
+        return company_service.SearchEvidence(
+            snippets=[
+                SourceSnippet(
+                    source="Serper",
+                    title="Harbor Residential",
+                    url="https://harbor.example",
+                    snippet="Harbor manages apartment communities and leasing operations.",
+                )
+            ],
+            missing_data=[],
+            session_id="session_1",
+        )
 
     async def fake_fetch_property_search_snippets(
         lead: LeadInput,
@@ -268,6 +279,10 @@ def test_company_enrichment_fetches_evidence_once_then_runs_classifiers_concurre
     async def fake_fetch_osm_address_metadata(address: str, city: str, state: str):
         counts["osm"] += 1
         return None
+
+    async def fake_extract_urls(**kwargs):
+        counts["extract"] += 1
+        return WebExtractResult(warnings=["no extraction provider"])
 
     async def fake_fetch_website_metadata(url: str):
         counts["website"] += 1
@@ -301,6 +316,7 @@ def test_company_enrichment_fetches_evidence_once_then_runs_classifiers_concurre
         "fetch_osm_address_metadata",
         fake_fetch_osm_address_metadata,
     )
+    monkeypatch.setattr(company_service, "extract_urls", fake_extract_urls)
     monkeypatch.setattr(
         company_service,
         "_fetch_website_metadata",
@@ -323,9 +339,258 @@ def test_company_enrichment_fetches_evidence_once_then_runs_classifiers_concurre
         "company_search": 1,
         "property_search": 1,
         "osm": 1,
+        "extract": 1,
         "website": 1,
     }
     assert order.index("property_classifier_start") < order.index("company_classifier_end")
+
+
+def test_company_search_maps_web_hits_to_provider_neutral_snippets(monkeypatch) -> None:
+    """Evidence is labeled by kind, not by whichever vendor answered the search."""
+
+    captured: dict = {}
+
+    async def fake_search_web(**kwargs):
+        captured.update(kwargs)
+        return WebSearchResult(
+            hits=[
+                WebSearchHit(
+                    url="https://harbor.example/about",
+                    title="About Harbor Residential",
+                    publish_date="2025-04-01",
+                    passages=[
+                        "Harbor Residential manages 42,000 apartment units.",
+                        "It operates 180 communities across 14 states.",
+                    ],
+                )
+            ],
+            provider="parallel",
+        )
+
+    monkeypatch.setattr(company_service, "search_web", fake_search_web)
+
+    search = asyncio.run(company_service._fetch_search_snippets(_lead()))
+    snippets = search.snippets
+
+    assert search.missing_data == []
+    assert [snippet.source for snippet in snippets] == ["Web search"]
+    assert snippets[0].url == "https://harbor.example/about"
+    assert snippets[0].publish_date == "2025-04-01"
+    # The longest passage leads, and every passage survives into the snippet.
+    assert snippets[0].snippet == (
+        "Harbor Residential manages 42,000 apartment units. "
+        "It operates 180 communities across 14 states."
+    )
+    assert captured["mode"] == "fast"
+    assert captured["queries"][0] == "Harbor Residential"
+
+
+def test_company_search_snippet_skips_page_navigation_for_the_dense_window(monkeypatch) -> None:
+    """Whole-page results start with nav, so the snippet must not be the head."""
+
+    nav = "Home Careers Blog Contact us Select Country English Remember this selection. "
+    evidence = (
+        "Harbor Residential manages 42,000 apartment units and operates 180 "
+        "communities for residents across 14 markets. "
+    )
+
+    async def fake_search_web(**kwargs):
+        return WebSearchResult(
+            hits=[
+                WebSearchHit(
+                    url="https://harbor.example/",
+                    title="Harbor Residential",
+                    passages=[nav * 6 + evidence + nav * 6],
+                )
+            ],
+            provider="parallel",
+        )
+
+    monkeypatch.setattr(company_service, "search_web", fake_search_web)
+    snippets = asyncio.run(company_service._fetch_search_snippets(_lead())).snippets
+
+    assert len(snippets) == 1
+    assert "42,000 apartment units" in snippets[0].snippet
+    assert len(snippets[0].snippet) <= 400
+
+
+def test_company_search_reports_missing_provider_without_naming_a_vendor(monkeypatch) -> None:
+    async def fake_search_web(**kwargs):
+        return WebSearchResult(
+            warnings=["Web search skipped because no search provider is configured."]
+        )
+
+    monkeypatch.setattr(company_service, "search_web", fake_search_web)
+
+    search = asyncio.run(company_service._fetch_search_snippets(_lead()))
+
+    assert search.snippets == []
+    assert search.missing_data == [
+        "Web search skipped because no search provider is configured."
+    ]
+
+
+def _company_snippet(url: str, *, title: str = "Harbor Residential") -> SourceSnippet:
+    return SourceSnippet(
+        source="Web search",
+        title=title,
+        url=url,
+        snippet="Harbor Residential manages apartment communities.",
+    )
+
+
+def test_website_candidates_prefer_about_pages_over_the_homepage() -> None:
+    """A homepage is listings and nav; the about page says what the company is."""
+
+    candidates = company_service._website_candidate_urls(
+        [
+            _company_snippet("https://www.linkedin.com/company/harbor", title="LinkedIn"),
+            _company_snippet("https://harbor.example/news/q3-results", title="Q3 results"),
+            _company_snippet("https://harbor.example/property-management", title="Services"),
+            _company_snippet("https://harbor.example/about-us", title="About us"),
+        ]
+    )
+
+    assert candidates == [
+        "https://harbor.example/about-us",
+        "https://harbor.example/property-management",
+        "https://harbor.example/",
+    ]
+
+
+def test_website_candidates_fall_back_to_the_homepage_and_primary_url() -> None:
+    candidates = company_service._website_candidate_urls(
+        [
+            _company_snippet("https://facebook.com/harbor", title="Facebook"),
+            _company_snippet("https://harbor.example/news/q3-results", title="Q3 results"),
+        ]
+    )
+
+    assert candidates == [
+        "https://harbor.example/",
+        "https://harbor.example/news/q3-results",
+    ]
+    assert company_service._website_candidate_urls([]) == []
+
+
+def test_website_step_uses_the_densest_extracted_page(monkeypatch) -> None:
+    captured: dict = {}
+
+    async def fake_extract_urls(**kwargs):
+        captured.update(kwargs)
+        return WebExtractResult(
+            pages=[
+                WebExtractPage(
+                    url="https://harbor.example/",
+                    title="Harbor Residential",
+                    passages=["Find your next home. Search apartments by city and price."],
+                ),
+                WebExtractPage(
+                    url="https://harbor.example/about-us",
+                    title="About Harbor Residential",
+                    publish_date="2025-05-02",
+                    passages=[
+                        "Harbor Residential is a multifamily property manager.",
+                        "Harbor Residential manages 42,000 apartment units across "
+                        "180 communities and 14 markets for its residents.",
+                    ],
+                ),
+            ],
+            provider="parallel",
+        )
+
+    async def fail_fetch_website_metadata(url: str):
+        raise AssertionError("extraction succeeded, so the HTML parser must not run")
+
+    monkeypatch.setattr(company_service, "extract_urls", fake_extract_urls)
+    monkeypatch.setattr(
+        company_service,
+        "_fetch_website_metadata",
+        fail_fetch_website_metadata,
+    )
+
+    evidence = asyncio.run(
+        company_service._fetch_website_evidence(
+            ["https://harbor.example/about-us", "https://harbor.example/"],
+            lead=_lead(),
+            primary_url="https://harbor.example/about-us",
+            session_id="session_1",
+        )
+    )
+
+    assert evidence is not None
+    assert evidence.enrichment.website_url == "https://harbor.example/about-us"
+    assert evidence.enrichment.domain == "harbor.example"
+    assert evidence.enrichment.website_title == "About Harbor Residential"
+    assert evidence.publish_date == "2025-05-02"
+    assert "42,000 apartment units" in evidence.enrichment.website_snippet
+    assert captured["session_id"] == "session_1"
+    assert captured["urls"] == ["https://harbor.example/about-us", "https://harbor.example/"]
+    assert "Harbor Residential" in captured["objective"]
+
+
+def test_website_step_falls_back_to_the_html_parser_when_extract_is_empty(monkeypatch) -> None:
+    fetched: list[str] = []
+
+    async def fake_extract_urls(**kwargs):
+        return WebExtractResult(
+            errors={"https://harbor.example/about-us": "fetch_failed (HTTP 403)"},
+            warnings=["Page content extraction failed; fell back to reading the page directly."],
+        )
+
+    async def fake_fetch_website_metadata(url: str):
+        fetched.append(url)
+        return CompanyEnrichment(
+            website_url=url,
+            website_title="Harbor Residential",
+            website_snippet="Multifamily property management for apartment communities.",
+        )
+
+    monkeypatch.setattr(company_service, "extract_urls", fake_extract_urls)
+    monkeypatch.setattr(
+        company_service,
+        "_fetch_website_metadata",
+        fake_fetch_website_metadata,
+    )
+
+    evidence = asyncio.run(
+        company_service._fetch_website_evidence(
+            ["https://harbor.example/about-us", "https://harbor.example/"],
+            lead=_lead(),
+            primary_url="https://harbor.example/",
+        )
+    )
+
+    assert evidence is not None
+    assert fetched == ["https://harbor.example/"]
+    assert evidence.enrichment.website_title == "Harbor Residential"
+    assert evidence.publish_date is None
+
+
+def test_website_step_reports_nothing_when_extract_and_the_parser_both_fail(monkeypatch) -> None:
+    async def fake_extract_urls(**kwargs):
+        return WebExtractResult()
+
+    async def fake_fetch_website_metadata(url: str):
+        return None
+
+    monkeypatch.setattr(company_service, "extract_urls", fake_extract_urls)
+    monkeypatch.setattr(
+        company_service,
+        "_fetch_website_metadata",
+        fake_fetch_website_metadata,
+    )
+
+    assert (
+        asyncio.run(
+            company_service._fetch_website_evidence(
+                ["https://harbor.example/"],
+                lead=_lead(),
+                primary_url="https://harbor.example/",
+            )
+        )
+        is None
+    )
 
 
 def _lead_payload(index: int) -> dict:

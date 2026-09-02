@@ -38,7 +38,7 @@ async def main() -> None:
     parser.add_argument(
         "--live",
         action="store_true",
-        help="Search the company name with Serper, fetch the discovered website, and score live evidence.",
+        help="Search the company name on the web, fetch the discovered website, and score live evidence.",
     )
     args = parser.parse_args()
 

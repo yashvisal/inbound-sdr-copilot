@@ -1,21 +1,50 @@
 import asyncio
 import logging
 import re
-import html
-import unicodedata
 from dataclasses import dataclass
+from datetime import date, timedelta
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 import httpx
 
-from app.config import get_settings
 from app.models import CompanyEnrichment, LeadInput, SourceSnippet
 from app.services.company_classifier import classify_company_signals
 from app.services.geocoder import fetch_osm_address_metadata
 from app.services.property_classifier import classify_property_signals
+from app.services.web_search import WebExtractPage, WebSearchHit, extract_urls, search_web
+from app.services.web_search import clean_whitespace as _clean_whitespace
 
 logger = logging.getLogger(__name__)
+
+# Provider-neutral labels: the evidence panel names the kind of source, not
+# whichever search vendor happened to answer.
+COMPANY_SOURCE_LABEL = "Web search"
+PROPERTY_SOURCE_LABEL = "Web search (property)"
+# Unit counts in decade-old press releases are usually stale, so the company
+# search only looks back this far.
+COMPANY_SEARCH_LOOKBACK_YEARS = 5
+# How much website text the classifiers read.
+WEBSITE_SNIPPET_CHARS = 700
+# Path fragments that mark the page on a company site that actually says what
+# the company does. A bare homepage is mostly listings and navigation, so these
+# are extracted in preference to it.
+WEBSITE_PATH_KEYWORDS = (
+    "about-us",
+    "about",
+    "who-we-are",
+    "our-company",
+    "our-story",
+    "company",
+    "property-management",
+    "management",
+    "services",
+    "portfolio",
+    "communities",
+)
+# Extracting more than a few pages costs more than it adds: the best evidence is
+# almost always on the first about-style page or the homepage.
+MAX_WEBSITE_CANDIDATES = 3
 
 BUSINESS_TYPE_TERMS = {
     "property manager",
@@ -136,6 +165,27 @@ class CompanyEnrichmentResult:
     missing_data: list[str]
 
 
+@dataclass(frozen=True)
+class SearchEvidence:
+    """What the company-name search produced, plus the provider session to reuse.
+
+    Threading the session id into the website extract lets the provider bill and
+    cache the two calls as one piece of work.
+    """
+
+    snippets: list[SourceSnippet]
+    missing_data: list[str]
+    session_id: str | None = None
+
+
+@dataclass(frozen=True)
+class WebsiteEvidence:
+    """Website fields for the enrichment, plus the page date for the citation."""
+
+    enrichment: CompanyEnrichment
+    publish_date: str | None = None
+
+
 class _HomepageParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -185,9 +235,10 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
     missing_data: list[str] = []
     evidence: list[SourceSnippet] = []
 
-    search_snippets, search_missing = await _fetch_search_snippets(lead)
+    search = await _fetch_search_snippets(lead)
+    search_snippets = search.snippets
     evidence.extend(search_snippets)
-    missing_data.extend(search_missing)
+    missing_data.extend(search.missing_data)
 
     osm_metadata = await fetch_osm_address_metadata(lead.address, lead.city, lead.state)
     if osm_metadata is None:
@@ -205,10 +256,16 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
     if website_url is None:
         missing_data.append("Company website was not inferred from company-name search results.")
     else:
-        website = await _fetch_website_metadata(website_url)
-        if website is None:
+        website_evidence = await _fetch_website_evidence(
+            _website_candidate_urls(search_snippets),
+            lead=lead,
+            primary_url=website_url,
+            session_id=search.session_id,
+        )
+        if website_evidence is None:
             missing_data.append(f"Company website metadata was unavailable for {website_url}.")
         else:
+            website = website_evidence.enrichment
             evidence.insert(
                 0,
                 SourceSnippet(
@@ -218,6 +275,7 @@ async def enrich_company(lead: LeadInput) -> CompanyEnrichmentResult:
                     snippet=website.website_snippet
                     or website.website_description
                     or "Website metadata was fetched.",
+                    publish_date=website_evidence.publish_date,
                 ),
             )
 
@@ -345,6 +403,90 @@ def extract_company_signals(
     )
 
 
+async def _fetch_website_evidence(
+    candidate_urls: list[str],
+    *,
+    lead: LeadInput,
+    primary_url: str,
+    session_id: str | None = None,
+) -> WebsiteEvidence | None:
+    """Read the company's own site for what it does and how big it is.
+
+    The extraction provider is tried first: it renders JavaScript, reads PDFs,
+    and returns excerpts chosen against an objective, which is what turns a
+    listings-heavy homepage into usable evidence. When it returns nothing
+    usable -- no key, a failed call, or every candidate erroring -- the raw HTML
+    parse of the primary URL still runs, so the website step degrades instead of
+    disappearing.
+    """
+
+    objective = (
+        f"Describe what {lead.company} does, whether it manages residential or "
+        "multifamily rental housing, and how many apartment units, homes, properties, "
+        "or communities it manages and in which markets."
+    )
+    result = await extract_urls(
+        urls=candidate_urls,
+        objective=objective,
+        queries=["units managed", "property management", "communities"],
+        session_id=session_id,
+    )
+    website = _website_evidence_from_pages(result.pages, lead=lead)
+    if website is not None:
+        return website
+
+    fallback = await _fetch_website_metadata(primary_url)
+    if fallback is None:
+        return None
+    return WebsiteEvidence(enrichment=fallback)
+
+
+def _website_evidence_from_pages(
+    pages: list[WebExtractPage],
+    *,
+    lead: LeadInput,
+) -> WebsiteEvidence | None:
+    """Pick the extracted page whose text carries the most scoring signal."""
+
+    best: WebsiteEvidence | None = None
+    best_score = 0
+    for page in pages:
+        text = _clean_whitespace(" ".join(page.passages))
+        if not text:
+            continue
+        bonus_terms = [lead.company]
+        window = _best_evidence_window(
+            text,
+            limit=WEBSITE_SNIPPET_CHARS,
+            step=100,
+            bonus_terms=bonus_terms,
+        )
+        score = _evidence_density(window, bonus_terms)
+        if best is not None and score <= best_score:
+            continue
+        best_score = score
+        best = WebsiteEvidence(
+            enrichment=CompanyEnrichment(
+                domain=_domain_from_url(page.url),
+                website_url=page.url,
+                website_title=page.title,
+                website_description=_website_description_from_passages(page.passages),
+                website_snippet=window or None,
+            ),
+            publish_date=page.publish_date,
+        )
+    return best
+
+
+def _website_description_from_passages(passages: list[str]) -> str | None:
+    """Stand in for the meta description with the first blurb-length passage."""
+
+    for passage in passages:
+        if len(passage) <= 300:
+            return passage
+    return None
+
+
 async def _fetch_website_metadata(url: str) -> CompanyEnrichment | None:
     urls = _candidate_website_urls(url)
     async with httpx.AsyncClient(timeout=12, follow_redirects=True) as client:
@@ -373,53 +515,49 @@ async def _fetch_website_metadata(url: str) -> CompanyEnrichment | None:
     return None
 
 
-async def _fetch_search_snippets(lead: LeadInput) -> tuple[list[SourceSnippet], list[str]]:
-    settings = get_settings()
-    if not settings.serper_api_key:
-        return [], ["Serper search skipped because SERPER_API_KEY is not configured."]
+async def _fetch_search_snippets(lead: LeadInput) -> SearchEvidence:
+    """Search the open web for what this company is and how big its portfolio is."""
 
-    queries = [
-        lead.company,
-        f"{lead.company} real estate portfolio units",
-        f"{lead.company} apartment units manages",
+    objective = (
+        f"Determine what {lead.company} does, whether it is a residential/multifamily "
+        "property management company, and how many apartment units, homes, properties "
+        "or communities it manages and in which markets."
+    )
+    result = await search_web(
+        objective=objective,
+        queries=[
+            lead.company,
+            f"{lead.company} apartment units managed",
+            f"{lead.company} property management portfolio",
+        ],
+        mode="fast",
+        max_results=5,
+        after_date=_lookback_date(COMPANY_SEARCH_LOOKBACK_YEARS),
+    )
+
+    missing_data = list(result.warnings)
+    snippets = [
+        snippet
+        for snippet in (
+            _snippet_from_hit(
+                hit,
+                source=COMPANY_SOURCE_LABEL,
+                fallback_title=lead.company,
+                bonus_terms=[lead.company],
+            )
+            for hit in result.hits
+        )
+        if snippet is not None
     ]
-    snippets: list[SourceSnippet] = []
-    missing_data: list[str] = []
-    async with httpx.AsyncClient(timeout=15) as client:
-        for query in queries:
-            try:
-                response = await client.post(
-                    "https://google.serper.dev/search",
-                    headers={
-                        "X-API-KEY": settings.serper_api_key,
-                        "Content-Type": "application/json",
-                        "User-Agent": "inbound-sdr-copilot/0.1",
-                    },
-                    json={"q": query, "num": 3},
-                )
-                response.raise_for_status()
-            except httpx.HTTPError:
-                logger.exception("Serper search failed for query %s", query)
-                missing_data.append(f"Search snippets were unavailable for query: {query}")
-                continue
-
-            for item in response.json().get("organic", [])[:3]:
-                snippet_text = _clean_whitespace(str(item.get("snippet", "")))
-                if not snippet_text:
-                    continue
-                snippets.append(
-                    SourceSnippet(
-                        source="Serper",
-                        title=str(item.get("title") or query),
-                        url=str(item.get("link") or ""),
-                        snippet=snippet_text,
-                    )
-                )
 
     if not snippets and not missing_data:
         missing_data.append("Search returned no usable company snippets.")
 
-    return _dedupe_source_snippets(_rank_source_snippets(snippets), limit=5), missing_data
+    return SearchEvidence(
+        snippets=_dedupe_source_snippets(_rank_source_snippets(snippets), limit=5),
+        missing_data=missing_data,
+        session_id=result.session_id,
+    )
 
 
 async def _fetch_property_search_snippets(
@@ -427,49 +565,46 @@ async def _fetch_property_search_snippets(
     *,
     osm_display_name: str | None = None,
 ) -> tuple[list[SourceSnippet], list[str]]:
-    settings = get_settings()
-    if not settings.serper_api_key:
-        return [], ["Property search skipped because SERPER_API_KEY is not configured."]
+    queries = [
+        _keyword_query(query)
+        for query in _property_search_queries(lead, osm_display_name=osm_display_name)
+    ]
+    objective = (
+        f"Find pages about the specific property at {lead.address}, {lead.city}, "
+        f"{lead.state}. Only pages about that exact property: its number of units, "
+        "floor plans, current availability, and leasing information. Ignore pages "
+        "about nearby or city-wide apartment listings."
+    )
+    result = await search_web(
+        objective=objective,
+        queries=queries,
+        mode="basic",
+        max_results=5,
+        location="us",
+    )
 
-    queries = _property_search_queries(lead, osm_display_name=osm_display_name)
-    snippets: list[SourceSnippet] = []
-    missing_data: list[str] = []
-    async with httpx.AsyncClient(timeout=15) as client:
-        for query in queries:
-            try:
-                response = await client.post(
-                    "https://google.serper.dev/search",
-                    headers={
-                        "X-API-KEY": settings.serper_api_key,
-                        "Content-Type": "application/json",
-                        "User-Agent": "inbound-sdr-copilot/0.1",
-                    },
-                    json={"q": query, "num": 5},
-                )
-                response.raise_for_status()
-            except httpx.HTTPError:
-                logger.exception("Serper property search failed for query %s", query)
-                missing_data.append(f"Property search snippets were unavailable for query: {query}")
-                continue
-
-            for item in response.json().get("organic", [])[:5]:
-                snippet_text = _clean_whitespace(str(item.get("snippet", "")))
-                if not snippet_text:
-                    continue
-                snippets.append(
-                    SourceSnippet(
-                        source="Serper Property",
-                        title=str(item.get("title") or query),
-                        url=str(item.get("link") or ""),
-                        snippet=snippet_text,
-                    )
-                )
-
-    if len(missing_data) == len(queries):
-        return [], missing_data
+    missing_data = list(result.warnings)
+    # Keeping the address and any building alias in the window matters twice
+    # over: it is the evidence, and it is what the address filter looks for.
+    bonus_terms = _address_match_terms(lead, osm_display_name)
+    snippets = [
+        snippet
+        for snippet in (
+            _snippet_from_hit(
+                hit,
+                source=PROPERTY_SOURCE_LABEL,
+                fallback_title=lead.address,
+                bonus_terms=bonus_terms,
+            )
+            for hit in result.hits
+        )
+        if snippet is not None
+    ]
 
     if not snippets:
-        missing_data.append("Property search returned no usable snippets.")
+        if not missing_data:
+            missing_data.append("Property search returned no usable snippets.")
+        return [], missing_data
 
     property_aliases = _property_aliases(lead, osm_display_name)
     ranked = _rank_property_source_snippets(
@@ -491,6 +626,108 @@ async def _fetch_property_search_snippets(
             "Property search returned snippets, but none matched the submitted or resolved property."
         )
     return _dedupe_source_snippets(matching, limit=5), missing_data
+
+
+def _snippet_from_hit(
+    hit: WebSearchHit,
+    *,
+    source: str,
+    fallback_title: str,
+    bonus_terms: list[str] | None = None,
+) -> SourceSnippet | None:
+    """Fold one search hit into a single evidence snippet.
+
+    Passages come back as whole-page text, so the snippet is the densest
+    400-char window rather than the top of the page, which is usually
+    navigation. 400 chars is what the classifiers read.
+    """
+
+    text = _hit_snippet_text(hit, bonus_terms=bonus_terms)
+    if not text:
+        return None
+    return SourceSnippet(
+        source=source,
+        title=hit.title or fallback_title,
+        url=hit.url,
+        snippet=text,
+        publish_date=hit.publish_date,
+    )
+
+
+def _hit_snippet_text(hit: WebSearchHit, *, bonus_terms: list[str] | None = None) -> str:
+    if not hit.passages:
+        return ""
+    longest = max(hit.passages, key=len)
+    ordered = [longest, *(passage for passage in hit.passages if passage != longest)]
+    return _best_evidence_window(
+        _clean_whitespace(" ".join(ordered)),
+        bonus_terms=bonus_terms,
+    )
+
+
+def _best_evidence_window(
+    text: str,
+    *,
+    limit: int = 400,
+    step: int = 80,
+    bonus_terms: list[str] | None = None,
+) -> str:
+    """Return the ``limit``-char span of ``text`` richest in scoring signal.
+
+    Search providers return page-length text whose first paragraph is often a
+    cookie banner or a nav bar, so slicing the head would hand the classifier
+    junk. Sliding a window and keeping the densest one puts the unit counts and
+    leasing language in front of it instead.
+    """
+
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+
+    best_start = 0
+    best_score = -1
+    for start in range(0, len(text) - limit + step, step):
+        score = _evidence_density(text[start : start + limit], bonus_terms)
+        if score > best_score:
+            best_score = score
+            best_start = start
+    if best_score <= 0:
+        best_start = 0
+
+    return _snap_to_words(text, best_start, limit)
+
+
+def _evidence_density(window: str, bonus_terms: list[str] | None) -> int:
+    lowered = window.lower()
+    score = 3 * len(_unit_count_signals(lowered))
+    score += len(_matched_terms(lowered, LEASING_VOLUME_TERMS))
+    score += len(_matched_terms(lowered, BUSINESS_TYPE_TERMS))
+    score += len(_matched_terms(lowered, RESIDENTIAL_PROPERTY_TERMS))
+    score += 3 * sum(1 for term in bonus_terms or [] if term and term.lower() in lowered)
+    return score
+
+
+def _snap_to_words(text: str, start: int, limit: int) -> str:
+    if start > 0:
+        space = text.find(" ", start)
+        start = start + 1 if space == -1 else space + 1
+    window = text[start : start + limit]
+    if start + limit < len(text):
+        head, _, tail = window.rpartition(" ")
+        if head and len(tail) < 40:
+            window = head
+    return window.strip()
+
+
+def _keyword_query(query: str, *, max_words: int = 8) -> str:
+    """Trim a sentence-style query to the keyword form search APIs prefer."""
+
+    words = _clean_whitespace(query).split()
+    return " ".join(words[:max_words])[:200].strip()
+
+
+def _lookback_date(years: int) -> str:
+    return (date.today() - timedelta(days=365 * years)).isoformat()
 
 
 def _property_search_queries(
@@ -549,6 +786,51 @@ def _website_url_from_search(snippets: list[SourceSnippet]) -> str | None:
     return None
 
 
+def _website_candidate_urls(
+    snippets: list[SourceSnippet],
+    *,
+    limit: int = MAX_WEBSITE_CANDIDATES,
+) -> list[str]:
+    """Order the company's own pages worth extracting, best first.
+
+    A homepage is mostly navigation and property listings; the "about" or
+    "property management" page is where a company states what it does and how
+    many units it runs. So any about-style page found on the company's own
+    domain leads, then the bare homepage, then whatever the search ranked first.
+    """
+
+    primary = _website_url_from_search(snippets)
+    if primary is None:
+        return []
+
+    domain = _domain_from_url(primary)
+    parsed = urlparse(primary if "://" in primary else f"https://{primary}")
+    homepage = f"{parsed.scheme}://{parsed.netloc}/" if parsed.netloc else primary
+
+    same_domain = [
+        snippet.url
+        for snippet in _rank_source_snippets(snippets)
+        if snippet.url and _domain_from_url(snippet.url) == domain
+    ]
+    about_pages = sorted(
+        (url for url in same_domain if _website_path_rank(url) is not None),
+        key=lambda url: _website_path_rank(url) or 0,
+    )
+    return _dedupe([*about_pages, homepage, primary])[:limit]
+
+
+def _website_path_rank(url: str) -> int | None:
+    """Rank a URL by how "about"-ish its path is; ``None`` when it is not."""
+
+    path = urlparse(url if "://" in url else f"https://{url}").path.lower()
+    if not path.strip("/"):
+        return None
+    for index, keyword in enumerate(WEBSITE_PATH_KEYWORDS):
+        if keyword in path:
+            return index
+    return None
+
+
 def _candidate_website_urls(url: str) -> list[str]:
     parsed = urlparse(url if "://" in url else f"https://{url}")
     if parsed.netloc:
@@ -602,16 +884,32 @@ def _rank_property_source_snippets(
     )
 
 
-def _source_priority(snippet: SourceSnippet) -> tuple[int, int]:
+def _source_priority(snippet: SourceSnippet) -> tuple[int, int, int]:
     text = f"{snippet.title or ''} {snippet.snippet} {snippet.url or ''}".lower()
     domain = _domain_from_url(snippet.url)
+    recency = _recency_key(snippet)
     if _has_scale_number(text):
-        return (0, -len(snippet.snippet))
+        return (0, recency, -len(snippet.snippet))
     if domain and any(domain == item or domain.endswith(f".{item}") for item in ["wikipedia.org", "linkedin.com"]):
-        return (1, -len(snippet.snippet))
+        return (1, recency, -len(snippet.snippet))
     if "about" in text or "portfolio" in text or "communities" in text:
-        return (2, -len(snippet.snippet))
-    return (3, -len(snippet.snippet))
+        return (2, recency, -len(snippet.snippet))
+    return (3, recency, -len(snippet.snippet))
+
+
+def _recency_key(snippet: SourceSnippet) -> int:
+    """Sort newer pages first within a tier; undated pages sort last.
+
+    Portfolio sizes go stale, so between two equally relevant sources the fresher
+    one should be the evidence the classifier reads.
+    """
+
+    if not snippet.publish_date:
+        return 0
+    try:
+        return -date.fromisoformat(snippet.publish_date[:10]).toordinal()
+    except ValueError:
+        return 0
 
 
 def _property_source_priority(
@@ -760,18 +1058,59 @@ def _has_strong_property_level_signal(text: str) -> bool:
     )
 
 
+_STREET_SUFFIX = r"(?:st|street|ave|avenue|rd|road|pkwy|parkway|blvd|boulevard|drive|dr|way|lane|ln)"
+# A street address is a house number followed by a short run of name words and
+# a street suffix: "20380 Stevens Creek Blvd". Anything looser (a zip code, a
+# phone number, "14 units available" sitting a few words before "Rd") is not.
+_STREET_ADDRESS_RE = re.compile(
+    rf"\b(\d{{1,6}})\s+(?:[a-z][a-z.'-]*\s+){{1,4}}{_STREET_SUFFIX}\b"
+)
+
+
 def _contains_different_street_address(text: str, lead: LeadInput) -> bool:
+    """True when the text names a street address with a different house number.
+
+    Only a real address shape counts. Search excerpts are long enough that a
+    zip code, a phone number or "14 units available" will sit near a street
+    suffix by accident, and the digits of the submitted number can appear
+    inside a larger number, so matching has to be anchored to the address
+    pattern itself rather than to any nearby digits.
+    """
+
     submitted_number_match = re.search(r"\b\d+\b", lead.address)
     submitted_number = submitted_number_match.group(0) if submitted_number_match else ""
     if not submitted_number:
         return False
-    for number in re.findall(r"\b\d{2,6}\b", text):
-        if number == submitted_number:
-            continue
-        nearby = text[max(0, text.find(number) - 40) : text.find(number) + 80]
-        if re.search(r"\b(st|street|ave|avenue|rd|road|pkwy|parkway|blvd|drive|dr|way|lane|ln)\b", nearby):
+    lowered = text.lower()
+    for match in _STREET_ADDRESS_RE.finditer(lowered):
+        if match.group(1) != submitted_number:
             return True
     return False
+
+
+def _address_match_terms(lead: LeadInput, osm_display_name: str | None) -> list[str]:
+    """Phrases whose presence marks text as being about the submitted property.
+
+    Used to steer the evidence window toward the part of a page that names the
+    building or street, which is also what the address filter looks for. The
+    raw address is not usable as-is: its commas and suffix spelling rarely
+    match a page verbatim, so this yields "214 barton springs rd",
+    "214 barton springs", "214 barton" and the building name instead.
+    """
+
+    terms: list[str] = []
+    normalized = _normalize_address_token(lead.address)
+    street = re.search(r"\b(\d{1,6})\s+([a-z]+(?:\s+[a-z]+){0,3})", normalized)
+    if street:
+        number = street.group(1)
+        words = street.group(2).split()
+        for count in range(len(words), 0, -1):
+            terms.append(f"{number} {' '.join(words[:count])}")
+    building_name = _building_name_token(lead.address)
+    if building_name:
+        terms.append(building_name)
+    terms.extend(_property_aliases(lead, osm_display_name))
+    return _dedupe([term for term in terms if len(term) >= 5])
 
 
 def _has_scale_number(text: str) -> bool:
@@ -827,29 +1166,12 @@ def _dedupe_source_snippets(snippets: list[SourceSnippet], *, limit: int) -> lis
                 title=snippet.title,
                 url=snippet.url,
                 snippet=_truncate(snippet.snippet, 400),
+                publish_date=snippet.publish_date,
             )
         )
         if len(result) >= limit:
             break
     return result
-
-
-def _clean_whitespace(value: str) -> str:
-    normalized = html.unescape(value)
-    normalized = unicodedata.normalize("NFKC", normalized)
-    replacements = {
-        "\u00a0": " ",
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\u2013": "-",
-        "\u2014": "-",
-        "\u2022": " ",
-    }
-    for old, new in replacements.items():
-        normalized = normalized.replace(old, new)
-    return re.sub(r"\s+", " ", normalized).strip()
 
 
 def _meaningful_website_excerpt(value: str) -> str:

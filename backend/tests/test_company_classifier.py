@@ -1000,3 +1000,29 @@ def test_low_volume_operator_caps_product_fit_at_moderate() -> None:
     audit = score.company_fit_breakdown.extraction_audit["product_fit"]
     assert audit.interpreted_bucket == "Moderate"
     assert audit.score_contribution == 5
+
+
+def test_property_evidence_ignores_unit_counts_and_zip_codes_near_street_suffix() -> None:
+    from app.services.company import _address_match_terms, _contains_different_street_address
+
+    lead = _lead()
+    lead.address = "The Catherine, 214 Barton Springs Rd"
+    lead.city = "Austin"
+    lead.state = "TX"
+
+    text = (
+        "the catherine - 214 barton springs rd austin tx (14 units available) | zillow "
+        "the catherine, 214 barton springs rd, austin, tx 78704, 71 photos, (512) 236-1211"
+    )
+    assert not _contains_different_street_address(text, lead)
+    assert _is_usable_property_evidence(text, lead)
+    assert _contains_different_street_address(
+        "the bouldin at 1401 south lamar blvd has 35 units available",
+        lead,
+    )
+    assert _address_match_terms(lead, None)[:3] == [
+        "214 barton springs rd",
+        "214 barton springs",
+        "214 barton",
+    ]
+    assert "the catherine" in _address_match_terms(lead, None)

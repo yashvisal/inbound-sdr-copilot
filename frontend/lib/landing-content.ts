@@ -35,7 +35,7 @@ export const CATEGORIES = [
     points: 39,
     summary:
       "Whether this is a buyer at all: leasing volume, operational complexity and product fit, read from website metadata and search evidence.",
-    sources: ["Company website", "Serper"],
+    sources: ["Company website", "Parallel search"],
   },
   {
     key: "property",
@@ -43,7 +43,7 @@ export const CATEGORIES = [
     points: 16,
     summary:
       "Whether the submitted address is a residential leasing asset, using OSM property type plus search results filtered to that exact building.",
-    sources: ["OSM / Nominatim", "Serper"],
+    sources: ["OSM / Nominatim", "Parallel search"],
   },
 ]
 
