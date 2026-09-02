@@ -1004,6 +1004,13 @@ def _street_name_token(address: str) -> str:
     house_number = _house_number(address)
     if house_number and house_number in parts:
         parts = parts[parts.index(house_number) + 1 :]
+        # ...and ends at the street suffix, so a trailing "Unit 4" does not
+        # leak into the token either.
+        street_suffixes = {"st", "ave", "rd", "pkwy", "blvd", "boulevard", "drive", "dr", "way", "lane", "ln"}
+        for index, part in enumerate(parts):
+            if part in street_suffixes:
+                parts = parts[: index + 1]
+                break
     elif parts and parts[0].isdigit():
         parts = parts[1:]
     stop_tokens = {"new", "york", "ny", "tx", "il", "mi", "al", "ca", "fl", "austin", "plano", "chicago"}

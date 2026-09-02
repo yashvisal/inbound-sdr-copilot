@@ -1045,3 +1045,16 @@ def test_house_number_comes_from_the_address_shape() -> None:
         lead,
     )
     assert _is_usable_property_evidence("500 main st apartments now leasing floor plans", lead)
+
+
+def test_street_name_token_stops_at_the_street_suffix() -> None:
+    from app.services.company import _street_name_token
+
+    assert _street_name_token("Suite 200, 500 Main St, Unit 4") == "main st"
+    assert _street_name_token("214 Barton Springs Rd") == "barton springs rd"
+
+    lead = _lead()
+    lead.address = "Suite 200, 500 Main St, Unit 4"
+    lead.city = "Austin"
+    lead.state = "TX"
+    assert _is_usable_property_evidence("500 main st apartments now leasing floor plans", lead)

@@ -116,7 +116,7 @@ Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html
 **Tests and tooling:**
 
 ```bash
-uv run pytest -q                                  # 133 tests
+uv run pytest -q                                  # 134 tests
 uv run python scripts/export_sample_analyses.py   # regenerate bundled demo data
 uv run python scripts/seed_sample_runs.py         # push samples to the shared dashboard
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
