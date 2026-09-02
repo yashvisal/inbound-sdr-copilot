@@ -1000,3 +1000,61 @@ def test_low_volume_operator_caps_product_fit_at_moderate() -> None:
     audit = score.company_fit_breakdown.extraction_audit["product_fit"]
     assert audit.interpreted_bucket == "Moderate"
     assert audit.score_contribution == 5
+
+
+def test_property_evidence_ignores_unit_counts_and_zip_codes_near_street_suffix() -> None:
+    from app.services.company import _address_match_terms, _contains_different_street_address
+
+    lead = _lead()
+    lead.address = "The Catherine, 214 Barton Springs Rd"
+    lead.city = "Austin"
+    lead.state = "TX"
+
+    text = (
+        "the catherine - 214 barton springs rd austin tx (14 units available) | zillow "
+        "the catherine, 214 barton springs rd, austin, tx 78704, 71 photos, (512) 236-1211"
+    )
+    assert not _contains_different_street_address(text, lead)
+    assert _is_usable_property_evidence(text, lead)
+    assert _contains_different_street_address(
+        "the bouldin at 1401 south lamar blvd has 35 units available",
+        lead,
+    )
+    assert _address_match_terms(lead, None)[:3] == [
+        "214 barton springs rd",
+        "214 barton springs",
+        "214 barton",
+    ]
+    assert "the catherine" in _address_match_terms(lead, None)
+
+
+def test_house_number_comes_from_the_address_shape() -> None:
+    from app.services.company import _contains_different_street_address, _house_number
+
+    assert _house_number("Suite 200, 500 Main St") == "500"
+    assert _house_number("The Catherine, 214 Barton Springs Rd") == "214"
+    assert _house_number("Building 7") == "7"
+    assert _house_number("The Eugene") == ""
+
+    lead = _lead()
+    lead.address = "Suite 200, 500 Main St"
+    lead.city = "Austin"
+    lead.state = "TX"
+    assert not _contains_different_street_address(
+        "apartments at 500 main st with 12 units available",
+        lead,
+    )
+    assert _is_usable_property_evidence("500 main st apartments now leasing floor plans", lead)
+
+
+def test_street_name_token_stops_at_the_street_suffix() -> None:
+    from app.services.company import _street_name_token
+
+    assert _street_name_token("Suite 200, 500 Main St, Unit 4") == "main st"
+    assert _street_name_token("214 Barton Springs Rd") == "barton springs rd"
+
+    lead = _lead()
+    lead.address = "Suite 200, 500 Main St, Unit 4"
+    lead.city = "Austin"
+    lead.state = "TX"
+    assert _is_usable_property_evidence("500 main st apartments now leasing floor plans", lead)

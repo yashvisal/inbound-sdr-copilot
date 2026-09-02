@@ -20,7 +20,17 @@ class Settings(BaseSettings):
     # one Vercel domain, so Starlette strips the prefix before matching routes.
     api_root_path: str = Field(default="", alias="API_ROOT_PATH")
     news_api_key: str | None = Field(default=None, alias="NEWS_API_KEY")
+    # Web search for company/property evidence. Parallel is the primary
+    # provider; Serper stays as the fallback when Parallel is unconfigured or
+    # its API call fails. Set WEB_SEARCH_PROVIDER=serper to pin the fallback.
+    parallel_api_key: str | None = Field(default=None, alias="PARALLEL_API_KEY")
+    web_search_provider: str = Field(default="parallel", alias="WEB_SEARCH_PROVIDER")
     serper_api_key: str | None = Field(default=None, alias="SERPER_API_KEY")
+    # Page content extraction (Parallel Extract) for the company-website step.
+    # Turning it off makes enrichment fall back to its own raw HTML parse, which
+    # is what the pre-Parallel stack did; the provider benchmark uses this to
+    # isolate the Search API from Extract.
+    web_extract_enabled: bool = Field(default=True, alias="WEB_EXTRACT_ENABLED")
     census_api_key: str | None = Field(default=None, alias="CENSUS_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.6-luna", alias="OPENAI_MODEL")

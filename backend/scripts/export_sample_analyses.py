@@ -5,7 +5,7 @@ leads and writes the results to ``frontend/lib/sample-analyses.json``. The
 frontend serves that file statically so "Load Sample Data" is instant and the
 hosted demo never depends on API quotas or timeouts.
 
-Run with whatever keys are present in ``backend/.env``; richer keys (Serper,
+Run with whatever keys are present in ``backend/.env``; richer keys (Parallel,
 OpenAI) produce richer precomputed evidence and outreach:
 
     uv run python scripts/export_sample_analyses.py

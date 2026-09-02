@@ -28,8 +28,8 @@ import {
 
 const RUBRIC_ROWS = [
   { axis: "Location Fit", signal: "Renter share, income, vacancy and transit access; city population, rent and growth", points: 45, source: "Census ACS, Census Geocoder" },
-  { axis: "Company Fit", signal: "Leasing volume, operational complexity, product fit", points: 39, source: "Company website, Serper" },
-  { axis: "Property Fit", signal: "Residential leasing asset or not, at that exact address", points: 16, source: "OSM / Nominatim, Serper" },
+  { axis: "Company Fit", signal: "Leasing volume, operational complexity, product fit", points: 39, source: "Company website, Parallel search" },
+  { axis: "Property Fit", signal: "Residential leasing asset or not, at that exact address", points: 16, source: "OSM / Nominatim, Parallel search" },
 ]
 
 export default function LandingPage() {

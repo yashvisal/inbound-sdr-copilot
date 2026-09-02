@@ -25,9 +25,9 @@ flowchart LR
   lead["Inbound lead"] --> enrich["Enrichment"]
   enrich --> census["Census ACS<br/>tract, place, population"]
   enrich --> geo["Census Geocoder<br/>+ OSM/Nominatim"]
-  enrich --> serper["Serper search"]
-  enrich --> site["Company website<br/>metadata"]
-  census & geo & serper & site --> llm["LLM: structured<br/>evidence extraction"]
+  enrich --> search["Parallel web search"]
+  enrich --> site["Company website<br/>Parallel Extract"]
+  census & geo & search & site --> llm["LLM: structured<br/>evidence extraction"]
   llm --> score["Deterministic<br/>scoring engine"]
   score --> out["Score · Reasons · Insights · Outreach"]
 ```
@@ -54,7 +54,7 @@ A lead only reaches High with evidence on all three axes: company and property f
 
 **Location Fit (45)** is mostly address-level, not city-level: tract renter share (10), neighborhood income (8), vacancy as a leasing-pressure proxy (6), and ACS commute/vehicle-access variables as a free stand-in for walkability (9) — with city population, median gross rent and growth contributing the remaining 12.
 
-**Company Fit (39)** scores three micro-signals extracted from website metadata and search snippets — leasing volume, operational complexity, and product fit. Guardrails keep it honest: weak product fit caps the category at 15, no product fit caps it at 5, and unit counts are calibrated in code rather than trusted from the model.
+**Company Fit (39)** scores three micro-signals extracted from company-website content and search snippets — leasing volume, operational complexity, and product fit. Guardrails keep it honest: weak product fit caps the category at 15, no product fit caps it at 5, and unit counts are calibrated in code rather than trusted from the model.
 
 **Property Fit (16)** decides whether the submitted address is actually a residential leasing asset, using OSM/Nominatim property type plus address-matched search evidence. Search snippets are filtered hard before classification — only exact-address, exact-street, or building-name matches survive, so "apartments near X" can't make an office tower look like a lease-up.
 
@@ -71,9 +71,20 @@ Real inbound addresses include branded building names and odd local formats, so 
 | Backend | FastAPI, Pydantic, httpx, uv |
 | Frontend | Next.js 16, React 19, Tailwind 4, shadcn/ui, zustand |
 | Storage | Upstash Redis (shared run dashboard + quota counters) |
-| Data | Census ACS, Census Geocoder, OSM/Nominatim, Serper |
+| Data | Census ACS, Census Geocoder, OSM/Nominatim, Parallel search + extract |
 | LLM | OpenAI, structured outputs only |
 | Hosting | Vercel (both halves, free tier) |
+
+### Switching web search from Serper to Parallel
+
+Company and property evidence originally came from Serper: three Google queries for the company, two for the property, one ~150-character snippet per result, no dates, and a homegrown HTML parser for the company website that any JavaScript-rendered or bot-protected site defeated. The search layer was the weakest part of the pipeline, so it now runs on the [Parallel](https://parallel.ai) Search API (one objective-driven call per company and per property) with the Parallel Extract API reading the company's own site. Serper stays as a fallback behind a provider switch.
+
+Measured on the live enrichment path with the same code, filters and 14 leads, only the provider swapped ([`docs/search-provider-benchmark.md`](docs/search-provider-benchmark.md), reproducible with `uv run python scripts/benchmark_search_providers.py` from `backend/`):
+
+- **Median company-search latency dropped 56%** (2,979 ms → 1,316 ms) and **search time per lead dropped 55%** (5,050 ms → 2,286 ms), on 3 provider requests per lead instead of 6.
+- **Roughly 9x more evidence per search** (2,089 → 19,789 characters returned), with the share of snippets carrying a publish date rising from 15% to 56%, which is what lets the pipeline prefer fresh unit counts over decade-old press releases.
+- **Company-website evidence went from 71% to 96% of runs** because Extract reads pages the raw HTML parser could not.
+- **Median Company Fit rose from 18.5 to 30.0 points**, low-confidence runs fell from 5 to 1 out of 28, and classifier rejections for evidence that wasn't source-backed fell from 3 to 1.
 
 ## The demo
 
@@ -100,12 +111,12 @@ pnpm install
 pnpm dev                # http://localhost:3000
 ```
 
-Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html)) is needed for meaningful Location Fit scores. `SERPER_API_KEY` and `OPENAI_API_KEY` unlock live company evidence and LLM-written outreach; without them the system falls back to rule-based classification and template outreach. Upstash credentials are optional locally — without them, run storage and quotas are no-ops.
+Only `CENSUS_API_KEY` ([free signup](https://api.census.gov/data/key_signup.html)) is needed for meaningful Location Fit scores. `PARALLEL_API_KEY` ([platform.parallel.ai](https://platform.parallel.ai)) and `OPENAI_API_KEY` unlock live company evidence and LLM-written outreach; `SERPER_API_KEY` is an optional search fallback, used automatically when the Parallel key is unset or a Parallel call fails, or exclusively when `WEB_SEARCH_PROVIDER=serper`; without any of them the system falls back to rule-based classification and template outreach. Upstash credentials are optional locally — without them, run storage and quotas are no-ops.
 
 **Tests and tooling:**
 
 ```bash
-uv run pytest -q                                  # 94 tests
+uv run pytest -q                                  # 134 tests
 uv run python scripts/export_sample_analyses.py   # regenerate bundled demo data
 uv run python scripts/seed_sample_runs.py         # push samples to the shared dashboard
 uv run python scripts/verify_company_fit.py --live --company "Greystar"
@@ -124,7 +135,10 @@ Environment variables on that project:
 | `API_ROOT_PATH` | `/api/backend` — the prefix the API is mounted under |
 | `NEXT_PUBLIC_API_BASE_URL` | `/api/backend` — relative, so it follows the domain |
 | `CENSUS_API_KEY` | Required for meaningful Location Fit scores |
-| `SERPER_API_KEY`, `OPENAI_API_KEY` | Optional; without them the rule-based fallbacks run |
+| `PARALLEL_API_KEY`, `OPENAI_API_KEY` | Optional; without them the rule-based fallbacks run |
+| `SERPER_API_KEY` | Optional web-search fallback, used when `PARALLEL_API_KEY` is unset or a Parallel call fails |
+| `WEB_SEARCH_PROVIDER` | `parallel` (default) or `serper` to pin the fallback as the provider |
+| `WEB_EXTRACT_ENABLED` | `true` (default); `false` skips Parallel Extract and reads company sites with the HTML parser |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared dashboard and quotas |
 | `MAX_RUNS_PER_MONTH`, `MAX_RUNS_PER_IP_PER_DAY` | Spend caps; `100` / `3` in production |
 

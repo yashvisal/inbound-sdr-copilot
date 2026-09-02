@@ -141,6 +141,10 @@ class SourceSnippet(BaseModel):
     title: str | None = None
     url: str | None = None
     snippet: str
+    # ISO date the page was published, when the search provider reports one.
+    # Used to break ranking ties toward fresher evidence; runs stored before
+    # this field existed simply omit it.
+    publish_date: str | None = None
 
 
 class CompanyEnrichment(BaseModel):

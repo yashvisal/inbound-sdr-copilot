@@ -34,7 +34,7 @@ def main() -> None:
     parser.add_argument(
         "--live",
         action="store_true",
-        help="Use live Serper, website enrichment, and OpenAI classification instead of offline inputs.",
+        help="Use live web search, website enrichment, and OpenAI classification instead of offline inputs.",
     )
     args = parser.parse_args()
     asyncio.run(_main(live=args.live))
